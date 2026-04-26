@@ -5,10 +5,12 @@ design spec dated 2026-04-25.
 
 ## Status
 
-This is a working **Phase 1–3** implementation: the unit-test foundation, unit-test
-selection, and the safety/CI fallback rules from the spec. Phases 4+ (multi-module
-reactor sharing, ECG/IEI integration test selection, OTel correlation, Spring Boot
-auto-config, JUnit 5 client extension) are not implemented.
+This is a working **Phase 1–3** implementation plus multi-module reactor support:
+the unit-test foundation, unit-test selection, the safety/CI fallback rules from
+the spec, and a shared coverage map at the reactor root with concurrency-safe
+writes under `mvn -T`. Phases 4+ (ECG/IEI integration test selection, OTel
+correlation, Spring Boot auto-config, JUnit 5 client extension) are not
+implemented.
 
 ## What's here
 
@@ -87,54 +89,38 @@ never silently skips tests.
   returning `DynamicTest`) gets one `beginTest`/`endTest` per factory call, not per
   generated test — coarse but safe.
 
-## Monorepo / multi-module status
+## Monorepo / multi-module support
 
-**Today this plugin does not safely support monorepos with multiple Maven modules
-or services.** It is correct for single-module projects (even when they live in a
-shared git tree alongside other services). The known issues for multi-module
-builds, in order of severity:
+Multi-module reactors are supported, including under `mvn -T`. The model:
 
-1. **Cross-module coverage is lost.** Each module writes its own
-   `target/.test-impact/coverage.db`. A test in module B that covers a class in
-   module A is recorded in B's map, but A's `select` reads A's map and never sees
-   the link. Spec §9 requires a single shared map at the reactor root.
-2. **Change detection is repo-wide, not module-aware.** `ChangeDetector` runs
-   `git diff` from the repo root via JGit, so every module sees every changed file
-   in the repo — including changes in sibling modules it does not depend on. This
-   over-selects tests (safe per spec §7) but defeats most of the speedup in a
-   monorepo.
-3. **Parallel reactor builds (`mvn -T`) will corrupt the map.** The atomic-rename
-   write in `CoverageMapStore` prevents half-written files, but two modules
-   finishing `report` concurrently will silently drop one module's update.
+| Artifact | Location | Why |
+| --- | --- | --- |
+| Coverage map (`coverage.db`) | reactor root `target/.test-impact/` | one shared forward index across the whole reactor |
+| Agent dump (`dump.bin`) | per-module `target/.test-impact/` | each module's test JVM writes its own |
+| Selection record (`selection.json`) | per-module | per-module `select` decision |
+| JSON report (`test-impact-report.json`) | per-module | per-module summary |
+| Build counter (`builds-since-full.txt`) | per-module | each module independently triggers periodic full runs |
 
-### What works today in a monorepo
+What changes per phase:
 
-- Single-module services, even when they coexist in a shared git tree.
-- Multi-module builds where every test lives in the same module as the production
-  code it covers (rare — integration/e2e tests usually violate this).
-- Sequential reactor builds (`mvn` without `-T`), accepting per-module maps and
-  the over-selection from issue 2.
+- `select` reads the shared map, filters changed sources to those owned by modules
+  reachable upstream from the current module via
+  `MavenSession.getProjectDependencyGraph()`, then filters the resolved tests to
+  those whose `.class` lives in the current module's test output dir.
+- `report` reads its module's dump and merges it into the shared map via
+  `CoverageMapStore.mergeAndSave`, which serialises read-modify-write under a JVM
+  monitor + OS-level `FileLock` on a sibling `.lock` file — safe under `mvn -T`.
+- `invalidate` clears the shared map plus every reactor module's per-module state.
 
-### Work required for proper monorepo support (next iteration)
+### Caveats
 
-1. **Shared map at reactor root.** Inject `MavenSession`, default the map and dump
-   paths to `session.getTopLevelProject().getBuild().getDirectory()/.test-impact/`.
-   Update `PluginPaths` accordingly. Small change.
-2. **Concurrency-safe writes.** Either a `FileChannel.lock()` around
-   read-modify-write in `CoverageMapStore`, or — preferred — a per-module staging
-   file plus a single aggregator step bound to the top-level project's `verify`
-   that merges all stagings into the shared map. The aggregator approach avoids
-   lock contention entirely and is cleaner under `-T`.
-3. **Reactor-graph-aware change filtering.** Use
-   `MavenSession.getProjectDependencyGraph()` to filter changed classes to those
-   reachable from the current module via the reactor dependency graph. Without
-   this, the plugin remains *safe* (over-selection only) but loses most of the
-   monorepo speedup.
-4. **Cross-module class-ref disambiguation.** The forward index uses JVM-internal
-   class names which are already global, so the data model needs no change — but
-   the `ClassResolver` should walk every reactor module's `target/classes` (not
-   just the current module's) so inner-class expansion works for changes in
-   sibling modules.
-
-Estimated effort: ~2–3 days, dominated by concurrency edge-case testing under
-`mvn -T` rather than by the wiring itself.
+- **Source-to-module mapping is by basedir prefix.** Files outside any module's
+  basedir (e.g. top-level config) are conservatively treated as relevant to every
+  module. Same for files under a parent POM at the repo root: the parent's
+  empty-prefix basedir acts as a catch-all.
+- **Dynamically-typed reactor projects** (e.g. modules added at runtime via
+  extensions) may not appear in `session.getProjects()` at the time `select`
+  runs; their changes won't be filtered.
+- **The agent does not aggregate per-test data across modules.** A single test ID
+  must run in a single module's surefire to be recorded coherently — this is the
+  normal case for unit tests (test class lives in the module that owns it).

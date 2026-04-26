@@ -40,4 +40,36 @@ class ClassResolverTest {
         assertEquals(1, resolved.size());
         assertTrue(resolved.contains("com/acme/Foo"));
     }
+
+    @Test
+    void multiModuleResolvesInnerClassesFromCorrectSiblingModule(@TempDir Path tmp) throws IOException {
+        Path moduleAClasses = tmp.resolve("module-a/target/classes");
+        Path moduleBClasses = tmp.resolve("module-b/target/classes");
+        Files.createDirectories(moduleAClasses.resolve("com/acme"));
+        Files.createDirectories(moduleBClasses.resolve("com/acme"));
+
+        // Foo only exists in module-b; resolver must find it even though we pass both dirs.
+        Files.createFile(moduleBClasses.resolve("com/acme/Foo.class"));
+        Files.createFile(moduleBClasses.resolve("com/acme/Foo$Inner.class"));
+
+        ClassResolver r = new ClassResolver(java.util.Arrays.asList(moduleAClasses, moduleBClasses));
+        Set<String> resolved = r.resolve(Arrays.asList("module-b/src/main/java/com/acme/Foo.java"));
+
+        assertEquals(2, resolved.size());
+        assertTrue(resolved.contains("com/acme/Foo"));
+        assertTrue(resolved.contains("com/acme/Foo$Inner"));
+    }
+
+    @Test
+    void multiModuleStripsLeadingModuleDirFromSourcePath(@TempDir Path tmp) throws IOException {
+        Path classes = tmp.resolve("module-a/target/classes/com/acme");
+        Files.createDirectories(classes);
+        Files.createFile(classes.resolve("Bar.class"));
+
+        ClassResolver r = new ClassResolver(java.util.Arrays.asList(tmp.resolve("module-a/target/classes")));
+        Set<String> resolved = r.resolve(Arrays.asList("module-a/src/main/java/com/acme/Bar.java"));
+
+        assertEquals(1, resolved.size());
+        assertTrue(resolved.contains("com/acme/Bar"));
+    }
 }

@@ -119,5 +119,21 @@ public final class ChangeDetector {
         }
     }
 
+    /**
+     * Repo work-tree root, or {@code null} if not in a git repo.
+     * The change set returned by {@link #changedSources} uses paths relative to this dir.
+     */
+    public File repoRoot() {
+        try (Repository repo = new FileRepositoryBuilder()
+                .findGitDir(workingDir)
+                .readEnvironment()
+                .build()) {
+            if (repo.getDirectory() == null) return null;
+            return repo.getWorkTree();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
     public static Set<String> empty() { return Collections.emptySet(); }
 }

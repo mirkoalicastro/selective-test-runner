@@ -4,30 +4,40 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
 /**
  * Resolve changed Java source files to JVM-internal class names ({@code com/acme/Foo}).
  *
- * For each changed source like {@code src/main/java/com/acme/Foo.java}, we:
+ * For each changed source like {@code module-a/src/main/java/com/acme/Foo.java}, we:
  *  1. derive the package-relative path {@code com/acme/Foo};
- *  2. scan the corresponding output classes directory for {@code Foo.class},
- *     {@code Foo$*.class}, {@code Foo$1.class}, etc., and add each match.
+ *  2. scan every configured output dir for {@code Foo.class}, {@code Foo$*.class},
+ *     {@code Foo$1.class}, etc., and add each match.
  *
- * If the output directory is not present (clean build), we fall back to the source-path-derived
- * name only — inner classes are missed but never silently misattributed.
+ * Multi-module builds pass every reactor module's compile + test-compile output dirs
+ * so a change in a sibling module's source still expands its inner classes correctly.
+ *
+ * If no output dir contains the file (clean build, or no module owns the path), we fall
+ * back to the source-path-derived name only — inner classes are missed but never silently
+ * misattributed.
  */
 public final class ClassResolver {
 
-    private final Path outputDir;
-    private final Path testOutputDir;
+    private final List<Path> searchDirs;
 
     public ClassResolver(Path outputDir, Path testOutputDir) {
-        this.outputDir = outputDir;
-        this.testOutputDir = testOutputDir;
+        this.searchDirs = new ArrayList<>(2);
+        if (outputDir != null) this.searchDirs.add(outputDir);
+        if (testOutputDir != null) this.searchDirs.add(testOutputDir);
+    }
+
+    public ClassResolver(List<Path> searchDirs) {
+        this.searchDirs = new ArrayList<>(searchDirs);
     }
 
     public Set<String> resolve(Collection<String> changedSources) {
@@ -40,15 +50,17 @@ public final class ClassResolver {
             String simple = slash < 0 ? base : base.substring(slash + 1);
 
             boolean foundInner = false;
-            foundInner |= addInnerClassFiles(outputDir, pkg, simple, classes);
-            foundInner |= addInnerClassFiles(testOutputDir, pkg, simple, classes);
-            if (!foundInner) classes.add(base); // fallback when classes dir is empty
+            for (Path dir : searchDirs) {
+                foundInner |= addInnerClassFiles(dir, pkg, simple, classes);
+            }
+            if (!foundInner) classes.add(base);
         }
         return classes;
     }
 
     private static String sourceToInternalName(String src) {
-        // Match common Maven source roots.
+        // Strip the longest known source-root prefix wherever it appears in the path,
+        // so monorepo paths like "module-a/src/main/java/com/acme/Foo.java" still work.
         String[] roots = {"src/main/java/", "src/test/java/"};
         for (String r : roots) {
             int idx = src.indexOf(r);
@@ -57,7 +69,6 @@ public final class ClassResolver {
                 if (rel.endsWith(".java")) return rel.substring(0, rel.length() - 5);
             }
         }
-        // Fallback: drop extension.
         if (src.endsWith(".java")) return src.substring(0, src.length() - 5);
         return null;
     }

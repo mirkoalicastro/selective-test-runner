@@ -49,4 +49,82 @@ class CoverageMapStoreTest {
         Set<String> hit = m.testsTouching(changed);
         assertEquals(new HashSet<>(java.util.Arrays.asList("T1", "T3")), hit);
     }
+
+    @Test
+    void mergeAndSaveCreatesFreshMapWhenMissing(@TempDir Path tmp) throws IOException {
+        Path file = tmp.resolve("coverage.db");
+        java.util.Map<String, Set<String>> entries = new java.util.HashMap<>();
+        entries.put("com.acme.T1#a", new HashSet<>(java.util.Arrays.asList("a/A")));
+        CoverageMapStore.mergeAndSave(file, entries, "abc123");
+
+        CoverageMap loaded = CoverageMapStore.load(file);
+        assertEquals(1, loaded.size());
+        assertEquals("abc123", loaded.buildHash());
+    }
+
+    @Test
+    void mergeAndSavePreservesPriorEntries(@TempDir Path tmp) throws IOException {
+        Path file = tmp.resolve("coverage.db");
+        CoverageMap initial = new CoverageMap();
+        initial.replace("T_old", new HashSet<>(java.util.Arrays.asList("a/Old")));
+        CoverageMapStore.save(file, initial);
+
+        java.util.Map<String, Set<String>> incoming = new java.util.HashMap<>();
+        incoming.put("T_new", new HashSet<>(java.util.Arrays.asList("a/New")));
+        CoverageMapStore.mergeAndSave(file, incoming, "h");
+
+        CoverageMap loaded = CoverageMapStore.load(file);
+        assertEquals(2, loaded.size());
+        assertEquals(new HashSet<>(java.util.Arrays.asList("a/Old")), loaded.entries().get("T_old"));
+        assertEquals(new HashSet<>(java.util.Arrays.asList("a/New")), loaded.entries().get("T_new"));
+    }
+
+    @Test
+    void mergeAndSaveReplacesEntryForRerunTest(@TempDir Path tmp) throws IOException {
+        Path file = tmp.resolve("coverage.db");
+        CoverageMap initial = new CoverageMap();
+        initial.replace("T1", new HashSet<>(java.util.Arrays.asList("a/Old1", "a/Old2")));
+        CoverageMapStore.save(file, initial);
+
+        java.util.Map<String, Set<String>> incoming = new java.util.HashMap<>();
+        incoming.put("T1", new HashSet<>(java.util.Arrays.asList("a/Fresh")));
+        CoverageMapStore.mergeAndSave(file, incoming, "h");
+
+        CoverageMap loaded = CoverageMapStore.load(file);
+        assertEquals(1, loaded.size());
+        assertEquals(new HashSet<>(java.util.Arrays.asList("a/Fresh")), loaded.entries().get("T1"));
+    }
+
+    @Test
+    void mergeAndSaveIsConcurrencySafe(@TempDir Path tmp) throws Exception {
+        // Simulates several modules under `mvn -T` writing to the shared map at once.
+        Path file = tmp.resolve("coverage.db");
+        int threads = 16;
+        int entriesPerThread = 25;
+
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        java.util.List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>();
+
+        for (int t = 0; t < threads; t++) {
+            final int tid = t;
+            futures.add(pool.submit(() -> {
+                start.await();
+                java.util.Map<String, Set<String>> entries = new java.util.HashMap<>();
+                for (int i = 0; i < entriesPerThread; i++) {
+                    String testId = "module" + tid + ".T" + i + "#go";
+                    entries.put(testId, new HashSet<>(java.util.Arrays.asList("c/C" + tid + "_" + i)));
+                }
+                CoverageMapStore.mergeAndSave(file, entries, "h" + tid);
+                return null;
+            }));
+        }
+
+        start.countDown();
+        for (java.util.concurrent.Future<?> f : futures) f.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        pool.shutdown();
+
+        CoverageMap loaded = CoverageMapStore.load(file);
+        assertEquals(threads * entriesPerThread, loaded.size());
+    }
 }

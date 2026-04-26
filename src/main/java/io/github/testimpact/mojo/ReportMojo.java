@@ -5,9 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.testimpact.change.ChangeDetector;
 import io.github.testimpact.common.DumpReader;
 import io.github.testimpact.common.PluginPaths;
+import io.github.testimpact.common.ReactorScope;
 import io.github.testimpact.report.ImpactReport;
 import io.github.testimpact.store.CoverageMap;
 import io.github.testimpact.store.CoverageMapStore;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -23,14 +25,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * Merges the per-build agent dump into the persistent coverage map, writes the JSON report,
- * updates the build counter, and prints a human-readable summary. Bound to {@code verify}.
+ * Merges this module's per-build agent dump into the reactor-shared coverage map,
+ * writes the per-module JSON report, updates the per-module build counter, and prints a
+ * human-readable summary. Bound to {@code verify}.
+ *
+ * Concurrency: {@link CoverageMapStore#mergeAndSave} serialises read-modify-write under
+ * an OS-level file lock so concurrent module reports under {@code mvn -T} are safe.
  */
 @Mojo(name = "report",
         defaultPhase = LifecyclePhase.VERIFY,
@@ -40,8 +45,11 @@ public class ReportMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     private MavenProject project;
 
-    @Parameter(property = "testimpact.coverageMapPath",
-            defaultValue = "${project.build.directory}/.test-impact/coverage.db")
+    @Parameter(defaultValue = "${session}", readonly = true, required = true)
+    private MavenSession session;
+
+    /** Path to the persistent coverage map. Defaults to the reactor root's build dir. */
+    @Parameter(property = "testimpact.coverageMapPath")
     private File coverageMapPath;
 
     @Parameter(property = "testimpact.fullRunInterval", defaultValue = "50")
@@ -51,45 +59,44 @@ public class ReportMojo extends AbstractMojo {
     public void execute() throws MojoExecutionException {
         String buildDir = project.getBuild().getDirectory();
         Path dump = PluginPaths.dump(buildDir);
-        Path mapPath = coverageMapPath.toPath();
         Path selRec = PluginPaths.selectionRecord(buildDir);
 
-        // 1. Load existing map (or create new).
-        CoverageMap map = null;
-        try {
-            map = CoverageMapStore.load(mapPath);
-        } catch (IOException e) {
-            getLog().warn("test-impact: existing map unreadable, will rebuild — " + e.getMessage());
-        }
-        boolean isFresh = map == null || map.version() != CoverageMap.FORMAT_VERSION;
-        if (isFresh) map = new CoverageMap();
+        File topBasedir = session.getTopLevelProject() == null
+                ? project.getBasedir()
+                : session.getTopLevelProject().getBasedir();
+        ChangeDetector cd = new ChangeDetector(topBasedir);
+        ReactorScope scope = new ReactorScope(session, project, cd.repoRoot());
+        Path mapPath = coverageMapPath != null
+                ? coverageMapPath.toPath()
+                : PluginPaths.coverageMap(scope.reactorRootBuildDir());
 
-        // 2. If dump exists, merge it.
+        // 1. Read this module's dump (if it exists).
         Map<String, Set<String>> dumpEntries = Collections.emptyMap();
         try {
-            if (Files.exists(dump)) {
-                dumpEntries = DumpReader.read(dump);
-                for (Map.Entry<String, Set<String>> e : dumpEntries.entrySet()) {
-                    // For full runs, replace the entry; for selections, merge.
-                    map.replace(e.getKey(), e.getValue());
-                }
-                if (!dumpEntries.isEmpty()) {
-                    map.setBuildHash(new ChangeDetector(project.getBasedir()).headCommit());
-                    map.setTimestamp(System.currentTimeMillis());
-                }
-            }
+            if (Files.exists(dump)) dumpEntries = DumpReader.read(dump);
         } catch (IOException e) {
             getLog().warn("test-impact: failed to read dump file: " + e.getMessage());
         }
 
-        // 3. Persist map.
+        // 2. Merge into the shared map under a file lock.
         try {
-            CoverageMapStore.save(mapPath, map);
+            String buildHash = cd.headCommit();
+            CoverageMapStore.mergeAndSave(mapPath, dumpEntries, buildHash);
         } catch (IOException e) {
-            throw new MojoExecutionException("Failed to write coverage map", e);
+            throw new MojoExecutionException("Failed to update shared coverage map", e);
         }
 
-        // 4. Update build counter.
+        // 3. Read the post-merge map for reporting (snapshot may include other modules' updates).
+        CoverageMap map;
+        try {
+            map = CoverageMapStore.load(mapPath);
+            if (map == null) map = new CoverageMap();
+        } catch (IOException e) {
+            getLog().warn("test-impact: post-merge map unreadable: " + e.getMessage());
+            map = new CoverageMap();
+        }
+
+        // 4. Update this module's build counter.
         boolean wasFullRun = wasFullRun(selRec);
         int newCounter;
         try {
@@ -114,7 +121,7 @@ public class ReportMojo extends AbstractMojo {
     }
 
     private boolean wasFullRun(Path selRec) {
-        if (!Files.exists(selRec)) return true; // no record == no select ran == treat as full
+        if (!Files.exists(selRec)) return true;
         try {
             JsonNode n = new ObjectMapper().readTree(selRec.toFile());
             return "FULL_RUN".equals(n.path("mode").asText());
@@ -188,7 +195,4 @@ public class ReportMojo extends AbstractMojo {
         }
         getLog().info("  Fallback mode  : " + r.fallbackMode);
     }
-
-    /** Hand for tests. */
-    static List<String> placeholder() { return Collections.emptyList(); }
 }
