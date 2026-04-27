@@ -95,19 +95,32 @@ public class CollectMojo extends AbstractMojo {
     }
 
     private File locateAgentJar() {
-        // Prefer the shaded "agent" classifier JAR if available; otherwise fall back to the plugin JAR.
+        // 1. Plugin's own dependency map (rare path — only set if user declared the agent classifier as a dependency).
         if (pluginArtifacts != null) {
             for (Artifact a : pluginArtifacts.values()) {
                 if (a == null || a.getFile() == null) continue;
                 if ("agent".equals(a.getClassifier())) return a.getFile();
             }
         }
-        // Walk the classloader to find our own jar via its protection domain.
+        // 2. Sibling -agent.jar next to the plugin JAR in ~/.m2 — the normal install layout.
         try {
             java.net.URL src = getClass().getProtectionDomain().getCodeSource().getLocation();
             if (src != null) {
-                File f = new File(src.toURI());
-                if (f.isFile()) return f;
+                File pluginJar = new File(src.toURI());
+                if (pluginJar.isFile()) {
+                    String name = pluginJar.getName();
+                    if (name.endsWith(".jar")) {
+                        String base = name.substring(0, name.length() - 4);
+                        File sibling = new File(pluginJar.getParentFile(), base + "-agent.jar");
+                        if (sibling.isFile()) return sibling;
+                    }
+                    // 3. Fallback to the plugin JAR itself. Only works if it bundles ASM (it doesn't by default,
+                    //    so this path will silently fail with NoClassDefFoundError inside the agent — warn loudly.)
+                    getLog().warn("test-impact: shaded agent JAR not found next to " + pluginJar.getName()
+                            + " — falling back to the plain plugin JAR. The agent will fail to load (ASM missing). "
+                            + "Reinstall the plugin so the '-agent' classifier JAR is present in your local repo.");
+                    return pluginJar;
+                }
             }
         } catch (Exception ignored) {
         }

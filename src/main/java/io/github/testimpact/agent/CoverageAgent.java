@@ -27,9 +27,15 @@ public final class CoverageAgent {
 
     private static void install(Instrumentation inst) {
         CoverageRecorder.enable();
+        // canRetransform=true is required for our injection to survive third-party agents
+        // that call Instrumentation.retransformClasses(). In particular, Mockito 5's inline
+        // mock maker retransforms classes used with @InjectMocks and @Mock — retransform
+        // restarts the transformer chain from the original class bytes and only invokes
+        // retransform-capable transformers, so a non-retransform-capable transformer's
+        // contributions are silently dropped on every retransformation.
         inst.addTransformer(new CoverageTransformer(
                 System.getProperty("testimpact.includes", ""),
                 System.getProperty("testimpact.excludes", "")
-        ), false);
+        ), true);
     }
 }

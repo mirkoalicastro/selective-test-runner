@@ -62,6 +62,11 @@ final class CoverageTransformer implements ClassFileTransformer {
     public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined,
                             ProtectionDomain pd, byte[] classfileBuffer) {
         if (className == null) return null;
+        // Skip bootstrap-loaded classes: the recorder lives on the system classloader and
+        // isn't reachable from the bootstrap loader, so an instrumented bootstrap class
+        // would throw NoClassDefFoundError on first invocation. java.xml's
+        // org.xml.sax.* classes hit this path when test code goes through JAXP.
+        if (loader == null) return null;
         if (isExcluded(className)) return null;
         if (!isIncluded(className)) return null;
         try {
@@ -70,10 +75,24 @@ final class CoverageTransformer implements ClassFileTransformer {
             new ClassReader(classfileBuffer).accept(scan, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
 
             ClassReader cr = new ClassReader(classfileBuffer);
-            ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-            cr.accept(new InjectingVisitor(cw, className, scan.testMethods, scan.isTestClass), 0);
+            // COMPUTE_MAXS only — COMPUTE_FRAMES would call ClassWriter#getCommonSuperClass which
+            // uses Class.forName via the loader. That fails for test classes referencing types not
+            // yet loadable in surefire's classloader (e.g. Maven-plugin types mocked under Mockito),
+            // and the failure swallows the whole transform → no beginTest/endTest for that class.
+            // Our injections (LDC + INVOKESTATIC at entry, INVOKESTATIC before RETURN) don't change
+            // stack/locals at any existing frame point, so the original frames stay valid.
+            ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
+            // EXPAND_FRAMES is required by AdviceAdapter (LocalVariablesSorter) — without it,
+            // any class compiled with -target 7+ that carries a StackMapTable (i.e. virtually
+            // all modern classfiles) fails the transform with "LocalVariablesSorter only
+            // accepts expanded frames", and the class runs uninstrumented.
+            cr.accept(new InjectingVisitor(cw, className, scan.testMethods, scan.isTestClass),
+                    ClassReader.EXPAND_FRAMES);
             return cw.toByteArray();
         } catch (Throwable t) {
+            if (Boolean.getBoolean("testimpact.debug")) {
+                System.err.println("[testimpact] transform failed for " + className + ": " + t);
+            }
             // Safety: never break the class load on a transform failure.
             return null;
         }
@@ -182,6 +201,12 @@ final class CoverageTransformer implements ClassFileTransformer {
             if (isTest) {
                 visitLdcInsn(testId);
                 visitMethodInsn(Opcodes.INVOKESTATIC, RECORDER, "beginTest",
+                        "(Ljava/lang/String;)V", false);
+                // Touch the test class itself so map entries always include at least the test
+                // class. This (a) keeps the test visible to impact analysis even if the body
+                // only exercises mocks, and (b) makes test-only edits re-select that test.
+                visitLdcInsn(classRef);
+                visitMethodInsn(Opcodes.INVOKESTATIC, RECORDER, "touch",
                         "(Ljava/lang/String;)V", false);
             }
         }

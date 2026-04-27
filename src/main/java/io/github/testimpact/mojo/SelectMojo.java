@@ -42,7 +42,10 @@ import java.util.TreeSet;
  * If the resolver returns a full-run, this mojo leaves Surefire's includes untouched.
  */
 @Mojo(name = "select",
-        defaultPhase = LifecyclePhase.TEST,
+        // PROCESS_TEST_CLASSES — must run before surefire:test. Binding to the `test`
+        // phase races surefire: when the user's pom declares surefire before this plugin,
+        // surefire's `test` goal fires first and the selection has no effect.
+        defaultPhase = LifecyclePhase.PROCESS_TEST_CLASSES,
         threadSafe = true)
 public class SelectMojo extends AbstractMojo {
 
@@ -120,11 +123,17 @@ public class SelectMojo extends AbstractMojo {
                 String empty = "io.github.testimpact.NoTestMatches#nothing";
                 project.getProperties().setProperty("test", empty);
                 project.getProperties().setProperty("surefire.test", empty);
+                session.getUserProperties().setProperty("test", empty);
+                session.getUserProperties().setProperty("surefire.test", empty);
                 getLog().info("test-impact: no impacted tests in this module");
             } else {
                 String csv = String.join(",", moduleClasses);
                 project.getProperties().setProperty("test", csv);
                 project.getProperties().setProperty("surefire.test", csv);
+                // Surefire's `test` parameter resolves from user properties first; setting only
+                // project properties leaves the filter unset in practice.
+                session.getUserProperties().setProperty("test", csv);
+                session.getUserProperties().setProperty("surefire.test", csv);
                 getLog().info("test-impact: selected " + sel.selectedTestIds().size() + " tests across "
                         + moduleClasses.size() + " classes (this module)");
             }

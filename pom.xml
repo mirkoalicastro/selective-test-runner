@@ -106,7 +106,6 @@
                             <Agent-Class>io.github.testimpact.agent.CoverageAgent</Agent-Class>
                             <Can-Retransform-Classes>true</Can-Retransform-Classes>
                             <Can-Redefine-Classes>true</Can-Redefine-Classes>
-                            <Boot-Class-Path>${project.build.finalName}.jar</Boot-Class-Path>
                         </manifestEntries>
                     </archive>
                 </configuration>
