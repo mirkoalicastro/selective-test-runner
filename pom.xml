@@ -11,19 +11,23 @@
     <packaging>maven-plugin</packaging>
 
     <name>maven-test-impact-plugin</name>
-    <description>Run only the tests that matter — bytecode-level test impact analysis for Maven.</description>
+    <description>Run only the tests that matter: bytecode-level test impact analysis for Maven.</description>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <maven.api.version>3.9.6</maven.api.version>
-        <maven.plugin.api.version>3.9.6</maven.plugin.api.version>
+        <maven.api.version>3.9.15</maven.api.version>
+        <maven.plugin.api.version>3.9.15</maven.plugin.api.version>
         <maven.plugin.tools.version>3.10.2</maven.plugin.tools.version>
         <asm.version>9.6</asm.version>
-        <jgit.version>6.7.0.202309050840-r</jgit.version>
-        <jackson.version>2.16.1</jackson.version>
+        <jgit.version>6.10.1.202505221210-r</jgit.version>
+        <jackson.version>2.21.3</jackson.version>
+        <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
+        <maven-shade-plugin.version>3.5.1</maven-shade-plugin.version>
+        <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
+        <spotless-maven-plugin.version>3.4.0</spotless-maven-plugin.version>
     </properties>
 
     <dependencies>
@@ -91,7 +95,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.3.0</version>
+                <version>${maven-jar-plugin.version}</version>
                 <configuration>
                     <archive>
                         <manifestEntries>
@@ -107,7 +111,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.5.1</version>
+                <version>${maven-shade-plugin.version}</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -145,7 +149,18 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
+                <version>${maven-surefire-plugin.version}</version>
+            </plugin>
+
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless-maven-plugin.version}</version>
+                <configuration>
+                    <java>
+                        <googleJavaFormat/>
+                    </java>
+                </configuration>
             </plugin>
         </plugins>
     </build>
