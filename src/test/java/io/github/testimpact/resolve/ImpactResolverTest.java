@@ -47,7 +47,7 @@ class ImpactResolverTest {
   @Test
   void selectsTestsTouchingChangedClasses() {
     CoverageMap m = new CoverageMap();
-    m.replace("com.acme.T1#a", new HashSet<>(java.util.Arrays.asList("a/A", "a/B")));
+    m.replace("com.acme.T1#a", new HashSet<>(List.of("a/A", "a/B")));
     m.replace("com.acme.T2#b", new HashSet<>(List.of("a/C")));
 
     Set<String> changed = new HashSet<>(List.of("a/A"));

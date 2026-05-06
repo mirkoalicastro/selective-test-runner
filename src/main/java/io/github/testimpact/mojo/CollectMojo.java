@@ -3,6 +3,7 @@ package io.github.testimpact.mojo;
 import io.github.testimpact.common.PluginPaths;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -101,7 +102,7 @@ public class CollectMojo extends AbstractMojo {
     }
     // 2. Sibling -agent.jar next to the plugin JAR in ~/.m2 — the normal install layout.
     try {
-      java.net.URL src = getClass().getProtectionDomain().getCodeSource().getLocation();
+      URL src = getClass().getProtectionDomain().getCodeSource().getLocation();
       if (src != null) {
         File pluginJar = new File(src.toURI());
         if (pluginJar.isFile()) {

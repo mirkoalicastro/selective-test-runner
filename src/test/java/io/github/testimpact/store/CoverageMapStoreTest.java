@@ -4,9 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -41,19 +40,19 @@ class CoverageMapStoreTest {
   @Test
   void testsTouchingResolvesIntersection() {
     CoverageMap m = new CoverageMap();
-    m.replace("T1", new HashSet<>(java.util.Arrays.asList("a/A", "a/B")));
+    m.replace("T1", new HashSet<>(List.of("a/A", "a/B")));
     m.replace("T2", new HashSet<>(List.of("a/C")));
-    m.replace("T3", new HashSet<>(java.util.Arrays.asList("a/B", "a/D")));
+    m.replace("T3", new HashSet<>(List.of("a/B", "a/D")));
 
     Set<String> changed = new HashSet<>(List.of("a/B"));
     Set<String> hit = m.testsTouching(changed);
-    assertEquals(new HashSet<>(java.util.Arrays.asList("T1", "T3")), hit);
+    assertEquals(new HashSet<>(List.of("T1", "T3")), hit);
   }
 
   @Test
   void mergeAndSaveCreatesFreshMapWhenMissing(@TempDir Path tmp) throws IOException {
     Path file = tmp.resolve("coverage.json");
-    java.util.Map<String, Set<String>> entries = new java.util.HashMap<>();
+    Map<String, Set<String>> entries = new HashMap<>();
     entries.put("com.acme.T1#a", new HashSet<>(List.of("a/A")));
     CoverageMapStore.mergeAndSave(file, entries, "abc123");
 
@@ -70,7 +69,7 @@ class CoverageMapStoreTest {
     initial.replace("T_old", new HashSet<>(List.of("a/Old")));
     CoverageMapStore.save(file, initial);
 
-    java.util.Map<String, Set<String>> incoming = new java.util.HashMap<>();
+    Map<String, Set<String>> incoming = new HashMap<>();
     incoming.put("T_new", new HashSet<>(List.of("a/New")));
     CoverageMapStore.mergeAndSave(file, incoming, "h");
 
@@ -85,10 +84,10 @@ class CoverageMapStoreTest {
   void mergeAndSaveReplacesEntryForRerunTest(@TempDir Path tmp) throws IOException {
     Path file = tmp.resolve("coverage.json");
     CoverageMap initial = new CoverageMap();
-    initial.replace("T1", new HashSet<>(java.util.Arrays.asList("a/Old1", "a/Old2")));
+    initial.replace("T1", new HashSet<>(List.of("a/Old1", "a/Old2")));
     CoverageMapStore.save(file, initial);
 
-    java.util.Map<String, Set<String>> incoming = new java.util.HashMap<>();
+    Map<String, Set<String>> incoming = new HashMap<>();
     incoming.put("T1", new HashSet<>(List.of("a/Fresh")));
     CoverageMapStore.mergeAndSave(file, incoming, "h");
 
@@ -105,31 +104,29 @@ class CoverageMapStoreTest {
     int threads = 16;
     int entriesPerThread = 25;
 
-    java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
-    java.util.concurrent.ExecutorService pool =
-        java.util.concurrent.Executors.newFixedThreadPool(threads);
-    java.util.List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>();
+    CountDownLatch start = new CountDownLatch(1);
+    try (ExecutorService pool = Executors.newFixedThreadPool(threads)) {
+      List<Future<?>> futures = new ArrayList<>();
 
-    for (int t = 0; t < threads; t++) {
-      final int tid = t;
-      futures.add(
-          pool.submit(
-              () -> {
-                start.await();
-                java.util.Map<String, Set<String>> entries = new java.util.HashMap<>();
-                for (int i = 0; i < entriesPerThread; i++) {
-                  String testId = "module" + tid + ".T" + i + "#go";
-                  entries.put(testId, new HashSet<>(List.of("c/C" + tid + "_" + i)));
-                }
-                CoverageMapStore.mergeAndSave(file, entries, "h" + tid);
-                return null;
-              }));
+      for (int t = 0; t < threads; t++) {
+        final int tid = t;
+        futures.add(
+            pool.submit(
+                () -> {
+                  start.await();
+                  Map<String, Set<String>> entries = new HashMap<>();
+                  for (int i = 0; i < entriesPerThread; i++) {
+                    String testId = "module" + tid + ".T" + i + "#go";
+                    entries.put(testId, new HashSet<>(List.of("c/C" + tid + "_" + i)));
+                  }
+                  CoverageMapStore.mergeAndSave(file, entries, "h" + tid);
+                  return null;
+                }));
+      }
+
+      start.countDown();
+      for (Future<?> f : futures) f.get(30, TimeUnit.SECONDS);
     }
-
-    start.countDown();
-    for (java.util.concurrent.Future<?> f : futures)
-      f.get(30, java.util.concurrent.TimeUnit.SECONDS);
-    pool.shutdown();
 
     CoverageMap loaded = CoverageMapStore.load(file);
     assertNotNull(loaded);

@@ -12,6 +12,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -56,9 +57,8 @@ public final class CoverageMapStore {
     Map<String, Set<String>> entries = new HashMap<>();
     if (raw.containsKey("entries")) {
       @SuppressWarnings("unchecked")
-      Map<String, java.util.List<String>> e =
-          (Map<String, java.util.List<String>>) raw.get("entries");
-      for (Map.Entry<String, java.util.List<String>> entry : e.entrySet()) {
+      Map<String, List<String>> e = (Map<String, List<String>>) raw.get("entries");
+      for (Map.Entry<String, List<String>> entry : e.entrySet()) {
         entries.put(entry.getKey(), new HashSet<>(entry.getValue()));
       }
     }
