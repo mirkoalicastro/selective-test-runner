@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -24,7 +25,7 @@ class ClassResolverTest {
     Files.createFile(pkg.resolve("OtherClass.class"));
 
     ClassResolver r = new ClassResolver(classes, null);
-    Set<String> resolved = r.resolve(Arrays.asList("src/main/java/com/acme/OrderService.java"));
+    Set<String> resolved = r.resolve(List.of("src/main/java/com/acme/OrderService.java"));
 
     assertEquals(3, resolved.size());
     assertTrue(resolved.contains("com/acme/OrderService"));
@@ -35,7 +36,7 @@ class ClassResolverTest {
   @Test
   void fallsBackToSourceNameWhenOutputDirMissing(@TempDir Path tmp) {
     ClassResolver r = new ClassResolver(tmp.resolve("nonexistent"), null);
-    Set<String> resolved = r.resolve(Arrays.asList("src/main/java/com/acme/Foo.java"));
+    Set<String> resolved = r.resolve(List.of("src/main/java/com/acme/Foo.java"));
     assertEquals(1, resolved.size());
     assertTrue(resolved.contains("com/acme/Foo"));
   }
@@ -52,8 +53,8 @@ class ClassResolverTest {
     Files.createFile(moduleBClasses.resolve("com/acme/Foo.class"));
     Files.createFile(moduleBClasses.resolve("com/acme/Foo$Inner.class"));
 
-    ClassResolver r = new ClassResolver(java.util.Arrays.asList(moduleAClasses, moduleBClasses));
-    Set<String> resolved = r.resolve(Arrays.asList("module-b/src/main/java/com/acme/Foo.java"));
+    ClassResolver r = new ClassResolver(Arrays.asList(moduleAClasses, moduleBClasses));
+    Set<String> resolved = r.resolve(List.of("module-b/src/main/java/com/acme/Foo.java"));
 
     assertEquals(2, resolved.size());
     assertTrue(resolved.contains("com/acme/Foo"));
@@ -66,9 +67,8 @@ class ClassResolverTest {
     Files.createDirectories(classes);
     Files.createFile(classes.resolve("Bar.class"));
 
-    ClassResolver r =
-        new ClassResolver(java.util.Arrays.asList(tmp.resolve("module-a/target/classes")));
-    Set<String> resolved = r.resolve(Arrays.asList("module-a/src/main/java/com/acme/Bar.java"));
+    ClassResolver r = new ClassResolver(List.of(tmp.resolve("module-a/target/classes")));
+    Set<String> resolved = r.resolve(List.of("module-a/src/main/java/com/acme/Bar.java"));
 
     assertEquals(1, resolved.size());
     assertTrue(resolved.contains("com/acme/Bar"));

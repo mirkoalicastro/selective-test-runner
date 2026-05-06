@@ -151,7 +151,7 @@ final class CoverageTransformer implements ClassFileTransformer {
     private final String internalName;
     private final Set<String> testMethods;
     private final boolean isTestClass;
-    private String classNameForTouch;
+    private final String classNameForTouch;
 
     InjectingVisitor(
         ClassVisitor cv, String internalName, Set<String> testMethods, boolean isTestClass) {

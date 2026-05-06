@@ -146,7 +146,7 @@ public class ReportMojo extends AbstractMojo {
     r.baseline = "lastCommit";
     r.changedClasses = new ArrayList<>();
     r.fallbackMode = wasFullRun;
-    r.mapAge = newCounter < 0 ? 0 : newCounter;
+    r.mapAge = Math.max(newCounter, 0);
     r.mapEntries = map.size();
     r.durationMs = 0L;
 

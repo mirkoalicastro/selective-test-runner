@@ -48,23 +48,8 @@ public class CollectMojo extends AbstractMojo {
   @Parameter(property = "testimpact.excludes")
   private String excludes;
 
-  /** Extra JVM args passed to the forked Surefire JVM alongside the agent. */
-  @Parameter(property = "testimpact.agentJvmArgs", defaultValue = "")
-  private String agentJvmArgs;
-
-  /**
-   * Skip collection (e.g. when the resolver determined we are in selection mode and not
-   * refreshing).
-   */
-  @Parameter(property = "testimpact.skipCollect", defaultValue = "false")
-  private boolean skipCollect;
-
   @Override
   public void execute() throws MojoExecutionException {
-    if (skipCollect) {
-      getLog().info("test-impact:collect skipped (selection mode, no refresh required)");
-      return;
-    }
     File agentJar = locateAgentJar();
     if (agentJar == null) {
       getLog()
@@ -96,10 +81,6 @@ public class CollectMojo extends AbstractMojo {
     if (excludes != null && !excludes.isEmpty()) {
       argLine.append(" -Dtestimpact.excludes=").append(quote(excludes));
     }
-    if (agentJvmArgs != null && !agentJvmArgs.isEmpty()) {
-      argLine.append(' ').append(agentJvmArgs);
-    }
-
     String existing = project.getProperties().getProperty("argLine");
     String combined =
         existing == null || existing.isEmpty() ? argLine.toString() : argLine + " " + existing;

@@ -1,11 +1,11 @@
 package io.github.testimpact.store;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -20,14 +20,13 @@ class CoverageMapStoreTest {
     classes.add("com/acme/OrderService");
     classes.add("com/acme/PriceCalculator");
     m.replace("com.acme.OrderTest#computesTotal", classes);
-    m.replace(
-        "com.acme.OrderTest#applyDiscount",
-        new HashSet<>(java.util.Arrays.asList("com/acme/Discount")));
+    m.replace("com.acme.OrderTest#applyDiscount", new HashSet<>(List.of("com/acme/Discount")));
 
     Path file = tmp.resolve("coverage.json");
     CoverageMapStore.save(file, m);
 
     CoverageMap loaded = CoverageMapStore.load(file);
+    assertNotNull(loaded);
     assertEquals(CoverageMap.FORMAT_VERSION, loaded.version());
     assertEquals("a3f91cc", loaded.buildHash());
     assertEquals(2, loaded.size());
@@ -43,10 +42,10 @@ class CoverageMapStoreTest {
   void testsTouchingResolvesIntersection() {
     CoverageMap m = new CoverageMap();
     m.replace("T1", new HashSet<>(java.util.Arrays.asList("a/A", "a/B")));
-    m.replace("T2", new HashSet<>(java.util.Arrays.asList("a/C")));
+    m.replace("T2", new HashSet<>(List.of("a/C")));
     m.replace("T3", new HashSet<>(java.util.Arrays.asList("a/B", "a/D")));
 
-    Set<String> changed = new HashSet<>(java.util.Arrays.asList("a/B"));
+    Set<String> changed = new HashSet<>(List.of("a/B"));
     Set<String> hit = m.testsTouching(changed);
     assertEquals(new HashSet<>(java.util.Arrays.asList("T1", "T3")), hit);
   }
@@ -55,10 +54,11 @@ class CoverageMapStoreTest {
   void mergeAndSaveCreatesFreshMapWhenMissing(@TempDir Path tmp) throws IOException {
     Path file = tmp.resolve("coverage.json");
     java.util.Map<String, Set<String>> entries = new java.util.HashMap<>();
-    entries.put("com.acme.T1#a", new HashSet<>(java.util.Arrays.asList("a/A")));
+    entries.put("com.acme.T1#a", new HashSet<>(List.of("a/A")));
     CoverageMapStore.mergeAndSave(file, entries, "abc123");
 
     CoverageMap loaded = CoverageMapStore.load(file);
+    assertNotNull(loaded);
     assertEquals(1, loaded.size());
     assertEquals("abc123", loaded.buildHash());
   }
@@ -67,17 +67,18 @@ class CoverageMapStoreTest {
   void mergeAndSavePreservesPriorEntries(@TempDir Path tmp) throws IOException {
     Path file = tmp.resolve("coverage.json");
     CoverageMap initial = new CoverageMap();
-    initial.replace("T_old", new HashSet<>(java.util.Arrays.asList("a/Old")));
+    initial.replace("T_old", new HashSet<>(List.of("a/Old")));
     CoverageMapStore.save(file, initial);
 
     java.util.Map<String, Set<String>> incoming = new java.util.HashMap<>();
-    incoming.put("T_new", new HashSet<>(java.util.Arrays.asList("a/New")));
+    incoming.put("T_new", new HashSet<>(List.of("a/New")));
     CoverageMapStore.mergeAndSave(file, incoming, "h");
 
     CoverageMap loaded = CoverageMapStore.load(file);
+    assertNotNull(loaded);
     assertEquals(2, loaded.size());
-    assertEquals(new HashSet<>(java.util.Arrays.asList("a/Old")), loaded.entries().get("T_old"));
-    assertEquals(new HashSet<>(java.util.Arrays.asList("a/New")), loaded.entries().get("T_new"));
+    assertEquals(new HashSet<>(List.of("a/Old")), loaded.entries().get("T_old"));
+    assertEquals(new HashSet<>(List.of("a/New")), loaded.entries().get("T_new"));
   }
 
   @Test
@@ -88,12 +89,13 @@ class CoverageMapStoreTest {
     CoverageMapStore.save(file, initial);
 
     java.util.Map<String, Set<String>> incoming = new java.util.HashMap<>();
-    incoming.put("T1", new HashSet<>(java.util.Arrays.asList("a/Fresh")));
+    incoming.put("T1", new HashSet<>(List.of("a/Fresh")));
     CoverageMapStore.mergeAndSave(file, incoming, "h");
 
     CoverageMap loaded = CoverageMapStore.load(file);
+    assertNotNull(loaded);
     assertEquals(1, loaded.size());
-    assertEquals(new HashSet<>(java.util.Arrays.asList("a/Fresh")), loaded.entries().get("T1"));
+    assertEquals(new HashSet<>(List.of("a/Fresh")), loaded.entries().get("T1"));
   }
 
   @Test
@@ -117,8 +119,7 @@ class CoverageMapStoreTest {
                 java.util.Map<String, Set<String>> entries = new java.util.HashMap<>();
                 for (int i = 0; i < entriesPerThread; i++) {
                   String testId = "module" + tid + ".T" + i + "#go";
-                  entries.put(
-                      testId, new HashSet<>(java.util.Arrays.asList("c/C" + tid + "_" + i)));
+                  entries.put(testId, new HashSet<>(List.of("c/C" + tid + "_" + i)));
                 }
                 CoverageMapStore.mergeAndSave(file, entries, "h" + tid);
                 return null;
@@ -131,6 +132,7 @@ class CoverageMapStoreTest {
     pool.shutdown();
 
     CoverageMap loaded = CoverageMapStore.load(file);
+    assertNotNull(loaded);
     assertEquals(threads * entriesPerThread, loaded.size());
   }
 }

@@ -46,8 +46,7 @@ public final class CoverageMapStore {
     if (!Files.exists(file)) {
       return null;
     }
-    Map<String, Object> raw =
-        MAPPER.readValue(file.toFile(), new TypeReference<Map<String, Object>>() {});
+    Map<String, Object> raw = MAPPER.readValue(file.toFile(), new TypeReference<>() {});
     int version =
         raw.containsKey("version")
             ? ((Number) raw.get("version")).intValue()
@@ -83,17 +82,6 @@ public final class CoverageMapStore {
     Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
   }
 
-  /**
-   * Atomically read-merge-write the coverage map at {@code file}. Replaces every (testId &rarr;
-   * classes) pair in {@code newEntries} into the existing map, then writes the merged map back. If
-   * the existing map is missing or has the wrong format version, a fresh map is started. Tests not
-   * in {@code newEntries} are preserved.
-   *
-   * <p>Coordinated via an OS-level lock on {@code file.lock} so concurrent invocations (multiple
-   * modules under {@code mvn -T}, or different JVMs) serialise correctly.
-   *
-   * @param buildHash recorded as the map's new buildHash if {@code newEntries} is non-empty
-   */
   /**
    * Per-path JVM monitor. {@link FileLock} is process-wide but not thread-wide — two threads in the
    * same JVM trying to lock the same file get {@link
