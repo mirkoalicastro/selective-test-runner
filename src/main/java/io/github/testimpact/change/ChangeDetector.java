@@ -72,7 +72,7 @@ public final class ChangeDetector {
     private ObjectId resolveBaseline(Repository repo, Baseline baseline, String coverageBuildHash) throws IOException {
         switch (baseline) {
             case LAST_COMMIT:
-                return repo.resolve("HEAD~1");
+                return repo.resolve("HEAD");
             case LAST_TAG:
                 return resolveLatestTag(repo);
             case LAST_FULL_RUN:
