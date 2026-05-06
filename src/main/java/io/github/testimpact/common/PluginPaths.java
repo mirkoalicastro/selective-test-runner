@@ -14,9 +14,9 @@ public final class PluginPaths {
 
     private PluginPaths() {}
 
-    /** Shared coverage map: {@code <reactorRootBuildDir>/.test-impact/coverage.db}. */
+    /** Shared coverage map: {@code <reactorRootBuildDir>/.test-impact/coverage.json}. */
     public static Path coverageMap(String reactorRootBuildDir) {
-        return Paths.get(reactorRootBuildDir, ".test-impact", "coverage.db");
+        return Paths.get(reactorRootBuildDir, ".test-impact", "coverage.json");
     }
 
     /** Per-module agent dump: {@code <projectBuildDir>/.test-impact/dump.bin}. */

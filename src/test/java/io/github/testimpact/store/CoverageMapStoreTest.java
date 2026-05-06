@@ -23,7 +23,7 @@ class CoverageMapStoreTest {
         m.replace("com.acme.OrderTest#computesTotal", classes);
         m.replace("com.acme.OrderTest#applyDiscount", new HashSet<>(java.util.Arrays.asList("com/acme/Discount")));
 
-        Path file = tmp.resolve("coverage.db");
+        Path file = tmp.resolve("coverage.json");
         CoverageMapStore.save(file, m);
 
         CoverageMap loaded = CoverageMapStore.load(file);
@@ -52,7 +52,7 @@ class CoverageMapStoreTest {
 
     @Test
     void mergeAndSaveCreatesFreshMapWhenMissing(@TempDir Path tmp) throws IOException {
-        Path file = tmp.resolve("coverage.db");
+        Path file = tmp.resolve("coverage.json");
         java.util.Map<String, Set<String>> entries = new java.util.HashMap<>();
         entries.put("com.acme.T1#a", new HashSet<>(java.util.Arrays.asList("a/A")));
         CoverageMapStore.mergeAndSave(file, entries, "abc123");
@@ -64,7 +64,7 @@ class CoverageMapStoreTest {
 
     @Test
     void mergeAndSavePreservesPriorEntries(@TempDir Path tmp) throws IOException {
-        Path file = tmp.resolve("coverage.db");
+        Path file = tmp.resolve("coverage.json");
         CoverageMap initial = new CoverageMap();
         initial.replace("T_old", new HashSet<>(java.util.Arrays.asList("a/Old")));
         CoverageMapStore.save(file, initial);
@@ -81,7 +81,7 @@ class CoverageMapStoreTest {
 
     @Test
     void mergeAndSaveReplacesEntryForRerunTest(@TempDir Path tmp) throws IOException {
-        Path file = tmp.resolve("coverage.db");
+        Path file = tmp.resolve("coverage.json");
         CoverageMap initial = new CoverageMap();
         initial.replace("T1", new HashSet<>(java.util.Arrays.asList("a/Old1", "a/Old2")));
         CoverageMapStore.save(file, initial);
@@ -98,7 +98,7 @@ class CoverageMapStoreTest {
     @Test
     void mergeAndSaveIsConcurrencySafe(@TempDir Path tmp) throws Exception {
         // Simulates several modules under `mvn -T` writing to the shared map at once.
-        Path file = tmp.resolve("coverage.db");
+        Path file = tmp.resolve("coverage.json");
         int threads = 16;
         int entriesPerThread = 25;
 

@@ -11,9 +11,14 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Stream;
 
 /**
  * Activates coverage collection by attaching the agent JAR to Surefire's argLine.
@@ -71,6 +76,13 @@ public class CollectMojo extends AbstractMojo {
             throw new MojoExecutionException("Failed to create dump directory", e);
         }
 
+        if (includes == null || includes.isEmpty()) {
+            includes = detectProjectPackages();
+            if (includes != null) {
+                getLog().info("test-impact: auto-detected includes: " + includes);
+            }
+        }
+
         StringBuilder argLine = new StringBuilder();
         argLine.append("-javaagent:").append(quote(agentJar.getAbsolutePath()));
         argLine.append(" -Dtestimpact.dump=").append(quote(dump.toString()));
@@ -125,6 +137,48 @@ public class CollectMojo extends AbstractMojo {
         } catch (Exception ignored) {
         }
         return null;
+    }
+
+    /**
+     * Scans compiled output directories to discover the project's own package prefixes.
+     * Returns a comma-separated, dot-notation list (e.g. {@code "com.example.demo"})
+     * or {@code null} if no classes are found.
+     */
+    private String detectProjectPackages() {
+        TreeSet<String> packages = new TreeSet<>();
+        scanPackages(new File(project.getBuild().getOutputDirectory()), packages);
+        scanPackages(new File(project.getBuild().getTestOutputDirectory()), packages);
+        if (packages.isEmpty()) return null;
+
+        // Reduce to prefix-minimal set: since the TreeSet is sorted, each entry
+        // is kept only if it isn't already covered by the previous prefix.
+        List<String> minimal = new ArrayList<>();
+        for (String pkg : packages) {
+            if (minimal.isEmpty() || !pkg.startsWith(minimal.get(minimal.size() - 1) + "/")) {
+                minimal.add(pkg);
+            }
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < minimal.size(); i++) {
+            if (i > 0) sb.append(',');
+            sb.append(minimal.get(i).replace('/', '.'));
+        }
+        return sb.toString();
+    }
+
+    private static void scanPackages(File root, Set<String> packages) {
+        if (!root.isDirectory()) return;
+        try (Stream<Path> walk = Files.walk(root.toPath())) {
+            walk.filter(p -> p.toString().endsWith(".class"))
+                .forEach(p -> {
+                    Path parent = root.toPath().relativize(p).getParent();
+                    if (parent != null) {
+                        String pkg = parent.toString().replace(File.separatorChar, '/');
+                        if (!pkg.isEmpty()) packages.add(pkg);
+                    }
+                });
+        } catch (IOException ignored) {}
     }
 
     private static String quote(String s) {

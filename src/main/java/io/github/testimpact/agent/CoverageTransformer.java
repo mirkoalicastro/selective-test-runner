@@ -39,15 +39,7 @@ final class CoverageTransformer implements ClassFileTransformer {
     }
 
     private static final String[] DEFAULT_EXCLUDES = {
-            "java/", "javax/", "jdk/", "sun/", "com/sun/",
-            "org/junit", "junit/", "org/testng", "org/mockito",
-            "org/apache/maven", "org/apache/surefire", "org/apache/failsafe",
-            "io/github/testimpact/", "io/github/testimpact",
-            "org/objectweb/asm", "org/msgpack",
-            "org/eclipse/jgit", "com/fasterxml/jackson",
-            "org/apache/logging", "org/slf4j", "ch/qos/logback",
-            "kotlin/", "scala/", "groovy/",
-            "net/bytebuddy", "org/hamcrest", "org/assertj",
+            "io/github/testimpact/",
     };
 
     private final String[] includes;
