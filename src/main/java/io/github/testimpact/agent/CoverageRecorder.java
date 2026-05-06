@@ -39,6 +39,13 @@ public final class CoverageRecorder {
 
     private static final ThreadLocal<TestContext> CURRENT = new ThreadLocal<>();
 
+    /**
+     * Per-thread buffer for touches that arrive before any test context is active
+     * (e.g. class loading during field initialisation in the test constructor).
+     * Drained into the next {@link #beginTest} on the same thread.
+     */
+    private static final ThreadLocal<Set<String>> PENDING = ThreadLocal.withInitial(HashSet::new);
+
     /** Live contexts indexed by thread, used for shutdown finalisation. */
     private static final Map<Thread, TestContext> LIVE = new ConcurrentHashMap<>();
 
@@ -60,6 +67,12 @@ public final class CoverageRecorder {
         TestContext prev = CURRENT.get();
         if (prev != null) finalise(prev); // covers a previously-thrown test on this thread
         TestContext ctx = new TestContext(testId);
+        // Drain touches that arrived before this context (e.g. during field initialisation).
+        Set<String> pending = PENDING.get();
+        if (!pending.isEmpty()) {
+            ctx.touched.addAll(pending);
+            pending.clear();
+        }
         CURRENT.set(ctx);
         LIVE.put(Thread.currentThread(), ctx);
     }
@@ -76,7 +89,11 @@ public final class CoverageRecorder {
     public static void touch(String classRef) {
         if (!enabled) return;
         TestContext ctx = CURRENT.get();
-        if (ctx != null) ctx.touched.add(classRef);
+        if (ctx != null) {
+            ctx.touched.add(classRef);
+        } else {
+            PENDING.get().add(classRef);
+        }
     }
 
     private static void finalise(TestContext ctx) {
