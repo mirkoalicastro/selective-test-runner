@@ -105,28 +105,27 @@ class CoverageMapStoreTest {
     int entriesPerThread = 25;
 
     CountDownLatch start = new CountDownLatch(1);
-    try (ExecutorService pool = Executors.newFixedThreadPool(threads)) {
-      List<Future<?>> futures = new ArrayList<>();
+    ExecutorService pool = Executors.newFixedThreadPool(threads);
+    List<Future<?>> futures = new ArrayList<>();
 
-      for (int t = 0; t < threads; t++) {
-        final int tid = t;
-        futures.add(
-            pool.submit(
-                () -> {
-                  start.await();
-                  Map<String, Set<String>> entries = new HashMap<>();
-                  for (int i = 0; i < entriesPerThread; i++) {
-                    String testId = "module" + tid + ".T" + i + "#go";
-                    entries.put(testId, new HashSet<>(List.of("c/C" + tid + "_" + i)));
-                  }
-                  CoverageMapStore.mergeAndSave(file, entries, "h" + tid);
-                  return null;
-                }));
-      }
-
-      start.countDown();
-      for (Future<?> f : futures) f.get(30, TimeUnit.SECONDS);
+    for (int t = 0; t < threads; t++) {
+      final int tid = t;
+      futures.add(
+          pool.submit(
+              () -> {
+                start.await();
+                Map<String, Set<String>> entries = new HashMap<>();
+                for (int i = 0; i < entriesPerThread; i++) {
+                  String testId = "module" + tid + ".T" + i + "#go";
+                  entries.put(testId, new HashSet<>(List.of("c/C" + tid + "_" + i)));
+                }
+                CoverageMapStore.mergeAndSave(file, entries, "h" + tid);
+                return null;
+              }));
     }
+
+    start.countDown();
+    for (Future<?> f : futures) f.get(30, TimeUnit.SECONDS);
 
     CoverageMap loaded = CoverageMapStore.load(file);
     assertNotNull(loaded);
