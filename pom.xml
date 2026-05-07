@@ -12,6 +12,27 @@
 
     <name>Selective Test Runner</name>
     <description>Run only the tests that matter: bytecode-level test impact analysis.</description>
+    <url>https://github.com/mirkoalicastro/selective-test-runner</url>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Mirko Alicastro</name>
+            <email>mirkoalicastro@gmail.com</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/mirkoalicastro/selective-test-runner.git</connection>
+        <developerConnection>scm:git:ssh://github.com:mirkoalicastro/selective-test-runner.git</developerConnection>
+        <url>https://github.com/mirkoalicastro/selective-test-runner/tree/main</url>
+    </scm>
 
     <modules>
         <module>selective-test-runner-core</module>
