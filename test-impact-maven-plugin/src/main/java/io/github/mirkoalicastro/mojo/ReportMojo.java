@@ -33,7 +33,7 @@ import org.apache.maven.project.MavenProject;
  * per-module JSON report, updates the per-module build counter, and prints a human-readable
  * summary. Bound to {@code verify}.
  *
- * <p>Concurrency: {@link CoverageMapStore#mergeAndSave} serialises read-modify-write under an
+ * <p>Concurrency: {@code CoverageMapStore.mergeAndSave} serialises read-modify-write under an
  * OS-level file lock so concurrent module reports under {@code mvn -T} are safe.
  */
 @Mojo(name = "report", defaultPhase = LifecyclePhase.VERIFY, threadSafe = true)
