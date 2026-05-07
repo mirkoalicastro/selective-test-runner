@@ -18,7 +18,7 @@ Add the plugin to your `pom.xml`:
 
 ```xml
 <plugin>
-  <groupId>io.github.testimpact</groupId>
+  <groupId>io.github.mirkoalicastro</groupId>
   <artifactId>maven-test-impact-plugin</artifactId>
   <version>1.0.0-SNAPSHOT</version>
   <executions>
