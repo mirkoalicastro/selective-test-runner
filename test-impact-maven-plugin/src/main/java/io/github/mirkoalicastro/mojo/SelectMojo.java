@@ -28,15 +28,8 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 
 /**
- * Computes the impacted test set and feeds it into Surefire via the {@code test} property. Bound to
- * {@code test} (before {@code surefire:test}) per spec §5.2.
- *
- * <p>Multi-module behaviour: - Reads the shared coverage map from the reactor root. - Filters
- * changed sources to those owned by modules reachable upstream from this one via the reactor
- * dependency graph. - Filters selected tests to those whose .class lives in this module's test
- * output dir, so each module's Surefire only ever sees its own tests.
- *
- * <p>If the resolver returns a full-run, this mojo leaves Surefire's includes untouched.
+ * Computes the impacted test set and feeds it into Surefire via the {@code test} property. If the
+ * resolver returns a full run, Surefire's includes are left untouched.
  */
 @Mojo(
     name = "select",

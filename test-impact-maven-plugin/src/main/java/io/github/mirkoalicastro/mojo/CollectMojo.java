@@ -20,14 +20,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 
-/**
- * Activates coverage collection by attaching the agent JAR to Surefire's argLine. Bound to {@code
- * process-test-classes} per spec §5.2.
- *
- * <p>Effect on subsequent {@code surefire:test}: {@code -javaagent:<plugin.jar>
- * -Dtestimpact.dump=<dump.bin>} is prepended to {@code argLine}, instructing the forked test JVM to
- * instrument production classes and emit a per-test class-touch dump.
- */
+/** Attaches the agent JAR to Surefire's argLine for coverage collection. */
 @Mojo(
     name = "collect",
     defaultPhase = LifecyclePhase.PROCESS_TEST_CLASSES,
@@ -92,8 +85,7 @@ public class CollectMojo extends AbstractMojo {
   }
 
   private File locateAgentJar() {
-    // 1. Plugin's own dependency map (rare path — only set if user declared the agent classifier as
-    // a dependency).
+    // 1. Plugin's own dependency map.
     if (pluginArtifacts != null) {
       for (Artifact a : pluginArtifacts.values()) {
         if (a == null || a.getFile() == null) continue;

@@ -11,17 +11,8 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 /**
- * Resolve changed Java source files to JVM-internal class names ({@code com/acme/Foo}).
- *
- * <p>For each changed source like {@code module-a/src/main/java/com/acme/Foo.java}, we: 1. derive
- * the package-relative path {@code com/acme/Foo}; 2. scan every configured output dir for {@code
- * Foo.class}, {@code Foo$*.class}, {@code Foo$1.class}, etc., and add each match.
- *
- * <p>Multi-module builds pass every reactor module's compile + test-compile output dirs so a change
- * in a sibling module's source still expands its inner classes correctly.
- *
- * <p>If no output dir contains the file (clean build, or no module owns the path), we fall back to
- * the source-path-derived name only — inner classes are missed but never silently misattributed.
+ * Resolves changed Java source files to JVM-internal class names ({@code com/acme/Foo}), including
+ * inner classes found by scanning output directories.
  */
 public final class ClassResolver {
 

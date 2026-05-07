@@ -9,12 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Builds and writes the JSON report described in spec §10.2.
- *
- * <p>Schema (intentionally close to the spec's example): buildHash, baseline, changedClasses[],
- * selectedTests, totalTests, reductionPct, fallbackMode, mapAge, mapEntries, durationMs.
- */
+/** Builds and writes the JSON impact report. */
 public final class ImpactReport {
 
   private static final ObjectMapper MAPPER =

@@ -2,11 +2,11 @@ package io.github.mirkoalicastro.change;
 
 /** Baseline strategies for diffing the current working tree. */
 public enum Baseline {
-  /** HEAD vs HEAD~1 — best for PR-level CI. */
+  /** HEAD vs HEAD~1. */
   LAST_COMMIT,
-  /** HEAD vs latest tag — best for release pipelines. */
+  /** HEAD vs latest tag. */
   LAST_TAG,
-  /** Working tree vs the commit recorded in the coverage map — best for local dev. */
+  /** Working tree vs the commit recorded in the coverage map. */
   LAST_FULL_RUN;
 
   public static Baseline parse(String s) {

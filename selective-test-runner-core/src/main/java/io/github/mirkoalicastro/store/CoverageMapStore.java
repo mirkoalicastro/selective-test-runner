@@ -19,24 +19,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-/**
- * JSON-backed persistence for {@link CoverageMap}.
- *
- * <p>Layout (top-level JSON object):
- *
- * <pre>
- * {
- *   "version":   int,
- *   "buildHash": "string",
- *   "timestamp": long,
- *   "entries":   { "testId": ["classRef", ...] }
- * }
- * </pre>
- *
- * Concurrency: {@link #mergeAndSave} uses an OS-level {@link FileLock} on a sibling {@code .lock}
- * file so concurrent module reports under {@code mvn -T} serialise read-modify-write. The data file
- * itself is replaced atomically via temp+rename.
- */
+/** JSON-backed persistence for {@link CoverageMap}. */
 public final class CoverageMapStore {
 
   private CoverageMapStore() {}
@@ -82,12 +65,8 @@ public final class CoverageMapStore {
     Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
   }
 
-  /**
-   * Per-path JVM monitor. {@link FileLock} is process-wide but not thread-wide — two threads in the
-   * same JVM trying to lock the same file get {@link
-   * java.nio.channels.OverlappingFileLockException}. We synchronise on a per-path object first,
-   * then take the OS lock for cross-process safety.
-   */
+  // Per-path JVM monitor: FileLock is process-wide, so we need a JVM-level lock first
+  // to avoid OverlappingFileLockException from concurrent threads.
   private static final ConcurrentMap<String, Object> JVM_LOCKS = new ConcurrentHashMap<>();
 
   public static void mergeAndSave(Path file, Map<String, Set<String>> newEntries, String buildHash)

@@ -15,7 +15,7 @@
     <packaging>jar</packaging>
 
     <name>Selective Test Runner :: Core</name>
-    <description>Build-tool-agnostic core: bytecode agent, change detection, impact resolution, and coverage persistence.</description>
+    <description>Core library for bytecode-level test impact analysis.</description>
 
     <dependencies>
         <dependency>

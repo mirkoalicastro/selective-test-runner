@@ -11,10 +11,7 @@ public final class Selection {
   public enum Mode {
     /** Coverage map present, change set computed, intersection produced concrete tests. */
     SELECTED,
-    /**
-     * Force a full run: cold map, version mismatch, age limit reached, empty intersection, git
-     * failure, or any other safety condition.
-     */
+    /** Full run triggered by a fallback condition. */
     FULL_RUN
   }
 

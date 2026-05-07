@@ -29,12 +29,8 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 
 /**
- * Merges this module's per-build agent dump into the reactor-shared coverage map, writes the
- * per-module JSON report, updates the per-module build counter, and prints a human-readable
- * summary. Bound to {@code verify}.
- *
- * <p>Concurrency: {@code CoverageMapStore.mergeAndSave} serialises read-modify-write under an
- * OS-level file lock so concurrent module reports under {@code mvn -T} are safe.
+ * Merges this module's agent dump into the shared coverage map, writes a JSON report, updates the
+ * build counter, and prints a summary.
  */
 @Mojo(name = "report", defaultPhase = LifecyclePhase.VERIFY, threadSafe = true)
 public class ReportMojo extends AbstractMojo {

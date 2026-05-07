@@ -1,16 +1,16 @@
 ![Selective Test Runner](docs/images/logo.png)
 
-A Maven plugin that tracks which production classes each test touches at the bytecode level, then uses Git to detect what changed and runs only the affected tests. Zero annotations. Zero config changes to your tests. Just add the plugin and watch your feedback loop shrink.
+A Maven plugin that tracks which production classes each test touches at the bytecode level, then uses Git to detect what changed and runs only the affected tests. No annotations, no config changes to your tests.
 
 ## Why?
 
-Large Maven projects waste minutes (or hours) re-running thousands of tests when only a handful of source files changed. This plugin fixes that:
+Large Maven projects spend a lot of time re-running tests when only a few source files changed. This plugin addresses that:
 
-- **Bytecode-level precision**: instruments every method entry via a Java agent, so it catches dependencies that static analysis misses (reflection, polymorphism, lambdas).
-- **Git-aware**: diffs your working tree against the last commit, last tag, or last full run to find changed files.
-- **Zero test changes**: works with JUnit 4, JUnit 5, and TestNG out of the box. No annotations, no base classes, no test rewrites.
-- **Safe by default**: when in doubt, runs everything. Missing coverage data? Full run. Git error? Full run. The plugin never silently skips tests.
-- **Multi-module ready**: supports reactors with shared coverage maps and concurrent-safe writes under `mvn -T`.
+- Instruments every method entry via a Java agent, catching dependencies that static analysis misses (reflection, polymorphism, lambdas)
+- Diffs your working tree against the last commit, last tag, or last full run to find changed files
+- Works with JUnit 4, JUnit 5, and TestNG without requiring annotations, base classes, or test rewrites
+- Falls back to a full run when something is uncertain (missing coverage data, git errors, etc.)
+- Supports multi-module reactors with shared coverage maps and concurrent writes under `mvn -T`
 
 ## Quick start
 
@@ -39,27 +39,13 @@ Then run your build as usual:
 mvn verify
 ```
 
-**First run:** all tests execute and coverage is recorded. **Every run after:** only tests affected by your changes are selected. That's it.
+On the first run all tests execute and coverage is recorded. On subsequent runs only tests affected by your changes are selected.
 
 ## How it works
 
-```
-                  process-test-classes              test                    verify
-                 ┌──────────────────────┐  ┌─────────────────────┐  ┌───────────────────┐
-                 │                      │  │                     │  │                   │
-  git diff ──>   │  collect: attach     │  │  Surefire runs      │  │  report: merge    │
-  changed files  │  Java agent to       │  │  only selected      │  │  coverage dump    │
-       │         │  Surefire's argLine  │  │  tests              │  │  into shared map  │
-       │         │                      │  │                     │  │                   │
-       └──────>  │  select: intersect   │  │  Agent records      │  │  Emit JSON report │
-                 │  changes with        │  │  which classes      │  │  + console summary│
-                 │  coverage map        │  │  each test touches  │  │                   │
-                 └──────────────────────┘  └─────────────────────┘  └───────────────────┘
-```
-
-1. **Collect**: attaches a Java agent to Surefire's forked JVM. The agent instruments every method entry in your production and test classes using ASM bytecode rewriting.
-2. **Select**: uses JGit to detect changed `.java` files, resolves them to compiled classes (including inner classes), looks up the coverage map to find which tests touch those classes, and sets Surefire's `test` filter.
-3. **Report**: merges the per-module coverage dump into the shared coverage map (JSON) and writes a human-readable summary.
+1. **Collect** (`process-test-classes`): attaches a Java agent to Surefire's forked JVM. The agent instruments method entries in your production and test classes using ASM.
+2. **Select** (`process-test-classes`): uses JGit to detect changed `.java` files, resolves them to compiled classes (including inner classes), looks up the coverage map to find which tests touch those classes, and sets Surefire's `test` filter.
+3. **Report** (`verify`): merges the per-module coverage dump into the shared coverage map (JSON) and prints a summary.
 
 ## Configuration
 
@@ -86,43 +72,41 @@ mvn verify
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `baseline` | `lastCommit` | Git baseline for change detection. `lastCommit` = HEAD vs HEAD~1, `lastTag` = HEAD vs most recent tag, `lastFullRun` = working tree vs the commit recorded in the coverage map. |
-| `fullRunInterval` | `50` | Force a periodic full run every N incremental builds. Set to `0` to disable. |
-| `includes` | *(auto)* | Comma-separated package prefixes to instrument. Auto-detected from your source roots if omitted. |
+| `fullRunInterval` | `50` | Force a full run every N incremental builds. Set to `0` to disable. |
+| `includes` | *(auto)* | Comma-separated package prefixes to instrument. Auto-detected from source roots if omitted. |
 | `excludes` | *(empty)* | Comma-separated package prefixes to exclude from instrumentation. |
 | `failOnEmptySelection` | `false` | If `true`, fail the build when no tests match the changed classes instead of falling back to a full run. |
 | `coverageMapPath` | `<reactor-root>/target/.test-impact/coverage.json` | Override the coverage map location. |
 
 ## Baseline strategies
 
-Choose the right baseline for your workflow:
-
-| Strategy | Best for | How it works |
+| Strategy | Use case | How it works |
 |----------|----------|--------------|
-| `lastCommit` | **CI / pull requests** | Diffs HEAD against HEAD~1. Each push re-evaluates. |
-| `lastTag` | **Release pipelines** | Diffs HEAD against the most recent Git tag by timestamp. |
-| `lastFullRun` | **Local development** | Diffs the working tree against the commit hash recorded in the coverage map from the last full test run. |
+| `lastCommit` | CI / pull requests | Diffs HEAD against HEAD~1. Each push re-evaluates. |
+| `lastTag` | Release pipelines | Diffs HEAD against the most recent Git tag by timestamp. |
+| `lastFullRun` | Local development | Diffs the working tree against the commit hash recorded in the coverage map from the last full test run. |
 
 ## Multi-module reactors
 
-The plugin works out of the box with multi-module Maven projects, including parallel builds (`mvn -T`):
+The plugin supports multi-module Maven projects, including parallel builds (`mvn -T`):
 
-- **Shared coverage map** at the reactor root (`target/.test-impact/coverage.json`)
-- **Per-module dumps**: each module's Surefire JVM writes its own binary dump
-- **Concurrency-safe merges**: `report` uses a JVM monitor + OS-level `FileLock` for safe concurrent writes
-- **Dependency-aware filtering**: `select` uses `MavenSession.getProjectDependencyGraph()` to only consider changes in upstream modules
+- Shared coverage map at the reactor root (`target/.test-impact/coverage.json`)
+- Each module's Surefire JVM writes its own binary dump
+- `report` uses a JVM monitor + OS-level `FileLock` for concurrent writes
+- `select` uses `MavenSession.getProjectDependencyGraph()` to only consider changes in upstream modules
 
-## Safety guarantees
+## Fallback behaviour
 
-The plugin is designed to **never silently skip tests**. It falls back to a full run when:
+The plugin falls back to a full run when:
 
 - No coverage map exists (first run)
 - Coverage map version doesn't match the plugin version
 - Coverage map is older than `fullRunInterval` builds
 - Git change detection fails
-- The change set is empty (ambiguous state)
+- The change set is empty
 - No tests intersect with the changed classes
 
-This means you can adopt the plugin incrementally with confidence. The worst case is running all tests, same as without the plugin.
+The worst case is running all tests, same as without the plugin.
 
 ## Supported test frameworks
 
@@ -130,20 +114,18 @@ The agent detects test methods by annotation:
 
 | Framework | Annotations |
 |-----------|------------|
-| **JUnit 5** | `@Test`, `@ParameterizedTest`, `@RepeatedTest`, `@TestFactory`, `@TestTemplate` |
-| **JUnit 4** | `@Test` |
-| **TestNG** | `@Test` |
+| JUnit 5 | `@Test`, `@ParameterizedTest`, `@RepeatedTest`, `@TestFactory`, `@TestTemplate` |
+| JUnit 4 | `@Test` |
+| TestNG | `@Test` |
 
-No configuration needed: all three are detected automatically.
-
-## Goals reference
+## Goals
 
 | Goal | Phase | Description |
 |------|-------|-------------|
-| `test-impact:collect` | `process-test-classes` | Attaches the Java agent to Surefire's `argLine` for bytecode instrumentation |
-| `test-impact:select` | `process-test-classes` | Detects changed sources and sets Surefire's `test` filter to impacted tests only |
-| `test-impact:report` | `verify` | Merges coverage dump into the shared map, generates JSON report and console summary |
-| `test-impact:invalidate` | *(manual)* | Clears the coverage map and all per-module state for a clean rebuild |
+| `test-impact:collect` | `process-test-classes` | Attaches the Java agent to Surefire's `argLine` |
+| `test-impact:select` | `process-test-classes` | Detects changed sources and sets Surefire's `test` filter |
+| `test-impact:report` | `verify` | Merges coverage dump into the shared map and generates a report |
+| `test-impact:invalidate` | *(manual)* | Clears the coverage map and all per-module state |
 
 To reset the coverage map and force a full rebuild:
 
@@ -153,9 +135,9 @@ mvn test-impact:invalidate
 
 ## Requirements
 
-- **Java** 11+
-- **Maven** 3.9+
-- **Git** repository (for change detection)
+- Java 11+
+- Maven 3.9+
+- Git repository
 
 ## Building from source
 
@@ -166,43 +148,34 @@ mvn clean verify
 ```
 
 This produces three artifacts:
-- `selective-test-runner-core-1.0.0-SNAPSHOT.jar`: build-tool-agnostic core (agent, change detection, impact resolution, coverage persistence)
-- `selective-test-runner-core-1.0.0-SNAPSHOT-agent.jar`: the shaded agent JAR (ASM relocated) used as `-javaagent` in the forked Surefire JVM
+- `selective-test-runner-core-1.0.0-SNAPSHOT.jar`: the core library (agent, change detection, impact resolution, coverage persistence)
+- `selective-test-runner-core-1.0.0-SNAPSHOT-agent.jar`: the shaded agent JAR (ASM relocated)
 - `test-impact-maven-plugin-1.0.0-SNAPSHOT.jar`: the Maven plugin
 
 ## Contributing
 
-Contributions are welcome! Here's how to get started:
-
-1. **Fork** the repository and create a feature branch from `main`
-2. **Build & test** locally with `mvn clean verify`
-3. **Keep changes focused**: one feature or fix per pull request
-4. **Add tests** for new functionality
-5. **Open a pull request** against `main` with a clear description of what and why
+1. Fork the repository and create a feature branch from `main`
+2. Build and test locally with `mvn clean verify`
+3. One feature or fix per pull request
+4. Add tests for new functionality
+5. Open a pull request against `main`
 
 ### Project structure
 
 ```
-selective-test-runner-core/          # Build-tool-agnostic core
-  agent/          # Java agent: instrumentation, coverage recording
-  change/         # Git change detection, source-to-class resolution
-  store/          # Coverage map persistence (JSON)
-  resolve/        # Impact analysis, test selection logic
-  report/         # JSON + console report generation
-  common/         # Shared utilities (paths, dump reader)
+selective-test-runner-core/
+  agent/          Java agent, coverage recording
+  change/         Git change detection, source-to-class resolution
+  store/          Coverage map persistence (JSON)
+  resolve/        Impact analysis, test selection
+  report/         Report generation
+  common/         Shared utilities
 
-test-impact-maven-plugin/            # Maven plugin (thin wrapper over core)
-  mojo/           # Maven plugin goals (collect, select, report, invalidate)
-  common/         # Maven-specific utilities (reactor scope)
+test-impact-maven-plugin/
+  mojo/           Maven goals (collect, select, report, invalidate)
+  common/         Maven-specific utilities
 ```
-
-### Areas where help is appreciated
-
-- **Integration test selection**: Failsafe support with endpoint-flow modeling
-- **Gradle port**: adapt the agent and selection logic for Gradle builds
-- **Performance benchmarks**: real-world numbers on large open source projects
-- **Documentation**: usage guides, example projects
 
 ## License
 
-This project is open source. See the [LICENSE](LICENSE) file for details.
+See the [LICENSE](LICENSE) file for details.

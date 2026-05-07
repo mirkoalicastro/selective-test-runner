@@ -13,11 +13,8 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.commons.AdviceAdapter;
 
 /**
- * Bytecode transformer that: - skips system / framework / agent-internal classes; - in test classes
- * (have any test annotations), wraps test methods with begin/end; - in non-test classes, prepends a
- * {@link CoverageRecorder#touch(String)} call to every method.
- *
- * <p>Two-pass on each class: first pass detects which methods are tests, second pass transforms.
+ * Bytecode transformer. Skips system/framework classes. In test classes, wraps test methods with
+ * begin/end calls. In production classes, prepends a touch call to every method.
  */
 final class CoverageTransformer implements ClassFileTransformer {
 
@@ -71,17 +68,12 @@ final class CoverageTransformer implements ClassFileTransformer {
           .accept(scan, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
 
       ClassReader cr = new ClassReader(classfileBuffer);
-      // COMPUTE_MAXS only — COMPUTE_FRAMES would call ClassWriter#getCommonSuperClass which
-      // uses Class.forName via the loader. That fails for test classes referencing types not
-      // yet loadable in surefire's classloader (e.g. Maven-plugin types mocked under Mockito),
-      // and the failure swallows the whole transform → no beginTest/endTest for that class.
-      // Our injections (LDC + INVOKESTATIC at entry, INVOKESTATIC before RETURN) don't change
-      // stack/locals at any existing frame point, so the original frames stay valid.
+      // COMPUTE_MAXS only — COMPUTE_FRAMES calls getCommonSuperClass which uses Class.forName,
+      // failing for types not yet loadable in surefire's classloader. Our injections don't
+      // change stack/locals at existing frame points, so the original frames stay valid.
       ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
-      // EXPAND_FRAMES is required by AdviceAdapter (LocalVariablesSorter) — without it,
-      // any class compiled with -target 7+ that carries a StackMapTable (i.e. virtually
-      // all modern classfiles) fails the transform with "LocalVariablesSorter only
-      // accepts expanded frames", and the class runs uninstrumented.
+      // EXPAND_FRAMES is required by AdviceAdapter; without it, classes with a
+      // StackMapTable fail with "LocalVariablesSorter only accepts expanded frames".
       cr.accept(
           new InjectingVisitor(cw, className, scan.testMethods, scan.isTestClass),
           ClassReader.EXPAND_FRAMES);
@@ -90,7 +82,7 @@ final class CoverageTransformer implements ClassFileTransformer {
       if (Boolean.getBoolean("testimpact.debug")) {
         System.err.println("[testimpact] transform failed for " + className + ": " + t);
       }
-      // Safety: never break the class load on a transform failure.
+      // Don't break class loading on a transform failure.
       return null;
     }
   }

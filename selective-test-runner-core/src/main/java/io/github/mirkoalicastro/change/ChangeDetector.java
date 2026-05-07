@@ -18,10 +18,7 @@ import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
 
-/**
- * Detects changed source files between the working tree and a configurable baseline, then resolves
- * them to JVM-internal class names (including inner classes via {@code $N}).
- */
+/** Detects changed source files between the working tree and a configurable baseline. */
 public final class ChangeDetector {
 
   private final File workingDir;

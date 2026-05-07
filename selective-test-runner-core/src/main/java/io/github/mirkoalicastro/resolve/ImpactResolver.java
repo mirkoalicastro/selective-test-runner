@@ -3,12 +3,7 @@ package io.github.mirkoalicastro.resolve;
 import io.github.mirkoalicastro.store.CoverageMap;
 import java.util.Set;
 
-/**
- * Intersects a change set with a coverage map and produces a {@link Selection}. Implements the
- * safety-first invariants from spec §7: - cold/incompatible map → full run - map older than {@code
- * fullRunInterval} builds → full run + refresh - empty intersection → full run (warning), unless
- * explicitly suppressed
- */
+/** Intersects a change set with a coverage map and produces a {@link Selection}. */
 public final class ImpactResolver {
 
   private final int fullRunInterval;
@@ -40,7 +35,7 @@ public final class ImpactResolver {
       return Selection.fullRun("change set unavailable", null);
     }
     if (changedClasses.isEmpty()) {
-      // No changes detected — nothing to verify against. Run the full suite to be safe.
+      // No changes detected — run full suite.
       return Selection.fullRun("no changed classes detected", changedClasses);
     }
     Set<String> tests = map.testsTouching(changedClasses);

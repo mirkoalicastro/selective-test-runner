@@ -3,13 +3,7 @@ package io.github.mirkoalicastro.common;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-/**
- * Centralised path resolution for plugin artifacts.
- *
- * <p>Reactor-shared artifacts (coverage map, build counter) live under the reactor root's build
- * directory. Per-module artifacts (dump, selection record, JSON report) live under each module's
- * own build directory.
- */
+/** Path resolution for plugin artifacts. */
 public final class PluginPaths {
 
   private PluginPaths() {}
@@ -24,11 +18,7 @@ public final class PluginPaths {
     return Paths.get(projectBuildDir, ".test-impact", "dump.bin");
   }
 
-  /**
-   * Per-module build counter ({@code <projectBuildDir>/.test-impact/builds-since-full.txt}). Each
-   * module independently tracks its own builds-since-last-full-run so the fullRunInterval safety
-   * net fires per module rather than globally.
-   */
+  /** Per-module build counter. */
   public static Path buildCounter(String projectBuildDir) {
     return Paths.get(projectBuildDir, ".test-impact", "builds-since-full.txt");
   }

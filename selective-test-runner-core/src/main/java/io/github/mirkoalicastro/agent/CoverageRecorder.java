@@ -14,19 +14,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Per-test class-touch recorder. Loadable from the system class loader, thread-safe.
+ * Per-test class-touch recorder. Thread-safe, loaded from the system class loader.
  *
- * <p>Lifecycle: beginTest(id) — pushes a new test context onto the calling thread; finalises any
- * previous unfinished context for that thread (covers thrown tests). touch(cls) — records a
- * class-ref into the calling thread's current context. endTest() — finalises the calling thread's
- * current context.
- *
- * <p>Aggregated entries are written to the file at system property {@code testimpact.dump} during
- * JVM shutdown. Any contexts still live at shutdown are finalised first (this catches the last test
- * on a thread when it threw).
- *
- * <p>Dump format (DataOutput, simple binary): int numTests for each test: UTF testId int numClasses
- * for each class: UTF classRef
+ * <p>Aggregated entries are written to {@code testimpact.dump} during JVM shutdown.
  */
 public final class CoverageRecorder {
 
@@ -34,17 +24,13 @@ public final class CoverageRecorder {
 
   private static final ThreadLocal<TestContext> CURRENT = new ThreadLocal<>();
 
-  /**
-   * Per-thread buffer for touches that arrive before any test context is active (e.g. class loading
-   * during field initialisation in the test constructor). Drained into the next {@link #beginTest}
-   * on the same thread.
-   */
+  /** Touches arriving before any test context; drained into the next beginTest. */
   private static final ThreadLocal<Set<String>> PENDING = ThreadLocal.withInitial(HashSet::new);
 
-  /** Live contexts indexed by thread, used for shutdown finalisation. */
+  /** Live contexts, finalised at shutdown. */
   private static final Map<Thread, TestContext> LIVE = new ConcurrentHashMap<>();
 
-  /** Aggregated entries: testId -> set of touched class refs. */
+  /** testId -> touched class refs. */
   private static final Map<String, Set<String>> ENTRIES = new HashMap<>();
 
   private static volatile boolean enabled = false;
@@ -110,7 +96,7 @@ public final class CoverageRecorder {
     flush();
   }
 
-  /** Flush accumulated data to the configured dump file. Safe to call repeatedly. */
+  /** Writes accumulated data to the configured dump file. */
   public static synchronized void flush() {
     String dump = System.getProperty("testimpact.dump");
     if (dump == null || dump.isEmpty()) return;
