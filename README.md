@@ -2,8 +2,6 @@
 
 A Maven plugin that tracks which production classes each test touches at the bytecode level, then uses Git to detect what changed and runs only the affected tests. Zero annotations. Zero config changes to your tests. Just add the plugin and watch your feedback loop shrink.
 
----
-
 ## Why?
 
 Large Maven projects waste minutes (or hours) re-running thousands of tests when only a handful of source files changed. This plugin fixes that:
