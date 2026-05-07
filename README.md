@@ -1,6 +1,4 @@
-# maven-test-impact-plugin
-
-**Run only the tests that matter.**
+![Selective Test Runner](docs/images/logo.png)
 
 A Maven plugin that tracks which production classes each test touches at the bytecode level, then uses Git to detect what changed and runs only the affected tests. Zero annotations. Zero config changes to your tests. Just add the plugin and watch your feedback loop shrink.
 
@@ -169,9 +167,10 @@ cd maven-test-impact-plugin
 mvn clean verify
 ```
 
-This produces two artifacts:
+This produces three artifacts:
+- `selective-test-runner-core-1.0.0-SNAPSHOT.jar`: build-tool-agnostic core (agent, change detection, impact resolution, coverage persistence)
+- `selective-test-runner-core-1.0.0-SNAPSHOT-agent.jar`: the shaded agent JAR (ASM relocated) used as `-javaagent` in the forked Surefire JVM
 - `maven-test-impact-plugin-1.0.0-SNAPSHOT.jar`: the Maven plugin
-- `maven-test-impact-plugin-1.0.0-SNAPSHOT-agent.jar`: the shaded agent JAR (ASM relocated) used as `-javaagent` in the forked Surefire JVM
 
 ## Contributing
 
@@ -186,14 +185,17 @@ Contributions are welcome! Here's how to get started:
 ### Project structure
 
 ```
-src/main/java/io/github/testimpact/
+selective-test-runner-core/          # Build-tool-agnostic core
   agent/          # Java agent: instrumentation, coverage recording
   change/         # Git change detection, source-to-class resolution
   store/          # Coverage map persistence (JSON)
   resolve/        # Impact analysis, test selection logic
-  mojo/           # Maven plugin goals (collect, select, report, invalidate)
   report/         # JSON + console report generation
-  common/         # Shared utilities (reactor scope, paths, dump reader)
+  common/         # Shared utilities (paths, dump reader)
+
+maven-test-impact-plugin/            # Maven plugin (thin wrapper over core)
+  mojo/           # Maven plugin goals (collect, select, report, invalidate)
+  common/         # Maven-specific utilities (reactor scope)
 ```
 
 ### Areas where help is appreciated
