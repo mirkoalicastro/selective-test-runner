@@ -184,7 +184,7 @@ public class ReportMojo extends AbstractMojo {
   }
 
   private void printConsoleSummary(ImpactReport r, boolean wasFullRun) {
-    getLog().info("maven-test-impact-plugin");
+    getLog().info("test-impact-maven-plugin");
     getLog().info("  Changed classes : " + r.changedClasses.size());
     for (String c : new TreeSet<>(r.changedClasses)) getLog().info("    └─ " + c);
     getLog().info("  Coverage map   : " + r.mapEntries + " entries, " + r.mapAge + " builds old");

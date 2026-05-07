@@ -36,7 +36,7 @@
 
     <modules>
         <module>selective-test-runner-core</module>
-        <module>maven-test-impact-plugin</module>
+        <module>test-impact-maven-plugin</module>
     </modules>
 
     <properties>
@@ -54,6 +54,8 @@
         <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
         <maven-shade-plugin.version>3.5.1</maven-shade-plugin.version>
         <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
+        <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
+        <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
         <spotless-maven-plugin.version>3.4.0</spotless-maven-plugin.version>
     </properties>
 
@@ -136,6 +138,32 @@
                         </java>
                     </configuration>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>${maven-source-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>attach-sources</id>
+                            <goals>
+                                <goal>jar-no-fork</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>${maven-javadoc-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <goals>
+                                <goal>jar</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -150,4 +178,22 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>deployment</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

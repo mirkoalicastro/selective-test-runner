@@ -19,7 +19,7 @@ Add the plugin to your `pom.xml`:
 ```xml
 <plugin>
   <groupId>io.github.mirkoalicastro</groupId>
-  <artifactId>maven-test-impact-plugin</artifactId>
+  <artifactId>test-impact-maven-plugin</artifactId>
   <version>1.0.0-SNAPSHOT</version>
   <executions>
     <execution>
@@ -160,15 +160,15 @@ mvn test-impact:invalidate
 ## Building from source
 
 ```bash
-git clone https://github.com/mirkoalicastro/maven-test-impact-plugin.git
-cd maven-test-impact-plugin
+git clone https://github.com/mirkoalicastro/test-impact-maven-plugin.git
+cd test-impact-maven-plugin
 mvn clean verify
 ```
 
 This produces three artifacts:
 - `selective-test-runner-core-1.0.0-SNAPSHOT.jar`: build-tool-agnostic core (agent, change detection, impact resolution, coverage persistence)
 - `selective-test-runner-core-1.0.0-SNAPSHOT-agent.jar`: the shaded agent JAR (ASM relocated) used as `-javaagent` in the forked Surefire JVM
-- `maven-test-impact-plugin-1.0.0-SNAPSHOT.jar`: the Maven plugin
+- `test-impact-maven-plugin-1.0.0-SNAPSHOT.jar`: the Maven plugin
 
 ## Contributing
 
@@ -191,7 +191,7 @@ selective-test-runner-core/          # Build-tool-agnostic core
   report/         # JSON + console report generation
   common/         # Shared utilities (paths, dump reader)
 
-maven-test-impact-plugin/            # Maven plugin (thin wrapper over core)
+test-impact-maven-plugin/            # Maven plugin (thin wrapper over core)
   mojo/           # Maven plugin goals (collect, select, report, invalidate)
   common/         # Maven-specific utilities (reactor scope)
 ```
