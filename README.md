@@ -10,11 +10,11 @@ A Maven plugin that tracks which production classes each test touches at the byt
 
 Large Maven projects waste minutes (or hours) re-running thousands of tests when only a handful of source files changed. This plugin fixes that:
 
-- **Bytecode-level precision** -- instruments every method entry via a Java agent, so it catches dependencies that static analysis misses (reflection, polymorphism, lambdas).
-- **Git-aware** -- diffs your working tree against the last commit, last tag, or last full run to find changed files.
-- **Zero test changes** -- works with JUnit 4, JUnit 5, and TestNG out of the box. No annotations, no base classes, no test rewrites.
-- **Safe by default** -- when in doubt, runs everything. Missing coverage data? Full run. Git error? Full run. The plugin never silently skips tests.
-- **Multi-module ready** -- supports reactors with shared coverage maps and concurrent-safe writes under `mvn -T`.
+- **Bytecode-level precision**: instruments every method entry via a Java agent, so it catches dependencies that static analysis misses (reflection, polymorphism, lambdas).
+- **Git-aware**: diffs your working tree against the last commit, last tag, or last full run to find changed files.
+- **Zero test changes**: works with JUnit 4, JUnit 5, and TestNG out of the box. No annotations, no base classes, no test rewrites.
+- **Safe by default**: when in doubt, runs everything. Missing coverage data? Full run. Git error? Full run. The plugin never silently skips tests.
+- **Multi-module ready**: supports reactors with shared coverage maps and concurrent-safe writes under `mvn -T`.
 
 ## Quick start
 
@@ -61,9 +61,9 @@ mvn verify
                  └──────────────────────┘  └─────────────────────┘  └───────────────────┘
 ```
 
-1. **Collect** -- attaches a Java agent to Surefire's forked JVM. The agent instruments every method entry in your production and test classes using ASM bytecode rewriting.
-2. **Select** -- uses JGit to detect changed `.java` files, resolves them to compiled classes (including inner classes), looks up the coverage map to find which tests touch those classes, and sets Surefire's `test` filter.
-3. **Report** -- merges the per-module coverage dump into the shared coverage map (JSON) and writes a human-readable summary.
+1. **Collect**: attaches a Java agent to Surefire's forked JVM. The agent instruments every method entry in your production and test classes using ASM bytecode rewriting.
+2. **Select**: uses JGit to detect changed `.java` files, resolves them to compiled classes (including inner classes), looks up the coverage map to find which tests touch those classes, and sets Surefire's `test` filter.
+3. **Report**: merges the per-module coverage dump into the shared coverage map (JSON) and writes a human-readable summary.
 
 ## Configuration
 
@@ -111,9 +111,9 @@ Choose the right baseline for your workflow:
 The plugin works out of the box with multi-module Maven projects, including parallel builds (`mvn -T`):
 
 - **Shared coverage map** at the reactor root (`target/.test-impact/coverage.json`)
-- **Per-module dumps** -- each module's Surefire JVM writes its own binary dump
-- **Concurrency-safe merges** -- `report` uses a JVM monitor + OS-level `FileLock` for safe concurrent writes
-- **Dependency-aware filtering** -- `select` uses `MavenSession.getProjectDependencyGraph()` to only consider changes in upstream modules
+- **Per-module dumps**: each module's Surefire JVM writes its own binary dump
+- **Concurrency-safe merges**: `report` uses a JVM monitor + OS-level `FileLock` for safe concurrent writes
+- **Dependency-aware filtering**: `select` uses `MavenSession.getProjectDependencyGraph()` to only consider changes in upstream modules
 
 ## Safety guarantees
 
@@ -126,7 +126,7 @@ The plugin is designed to **never silently skip tests**. It falls back to a full
 - The change set is empty (ambiguous state)
 - No tests intersect with the changed classes
 
-This means you can adopt the plugin incrementally with confidence -- the worst case is running all tests, same as without the plugin.
+This means you can adopt the plugin incrementally with confidence. The worst case is running all tests, same as without the plugin.
 
 ## Supported test frameworks
 
@@ -138,7 +138,7 @@ The agent detects test methods by annotation:
 | **JUnit 4** | `@Test` |
 | **TestNG** | `@Test` |
 
-No configuration needed -- all three are detected automatically.
+No configuration needed: all three are detected automatically.
 
 ## Goals reference
 
@@ -170,8 +170,8 @@ mvn clean verify
 ```
 
 This produces two artifacts:
-- `maven-test-impact-plugin-1.0.0-SNAPSHOT.jar` -- the Maven plugin
-- `maven-test-impact-plugin-1.0.0-SNAPSHOT-agent.jar` -- the shaded agent JAR (ASM relocated) used as `-javaagent` in the forked Surefire JVM
+- `maven-test-impact-plugin-1.0.0-SNAPSHOT.jar`: the Maven plugin
+- `maven-test-impact-plugin-1.0.0-SNAPSHOT-agent.jar`: the shaded agent JAR (ASM relocated) used as `-javaagent` in the forked Surefire JVM
 
 ## Contributing
 
@@ -179,7 +179,7 @@ Contributions are welcome! Here's how to get started:
 
 1. **Fork** the repository and create a feature branch from `main`
 2. **Build & test** locally with `mvn clean verify`
-3. **Keep changes focused** -- one feature or fix per pull request
+3. **Keep changes focused**: one feature or fix per pull request
 4. **Add tests** for new functionality
 5. **Open a pull request** against `main` with a clear description of what and why
 
@@ -198,11 +198,10 @@ src/main/java/io/github/testimpact/
 
 ### Areas where help is appreciated
 
-- **Integration test selection** -- Failsafe support with endpoint-flow modeling
-- **IDE integration** -- IntelliJ / VS Code plugins for in-editor feedback
-- **Gradle port** -- adapt the agent and selection logic for Gradle builds
-- **Performance benchmarks** -- real-world numbers on large open source projects
-- **Documentation** -- usage guides, blog posts, example projects
+- **Integration test selection**: Failsafe support with endpoint-flow modeling
+- **Gradle port**: adapt the agent and selection logic for Gradle builds
+- **Performance benchmarks**: real-world numbers on large open source projects
+- **Documentation**: usage guides, example projects
 
 ## License
 
