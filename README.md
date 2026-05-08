@@ -165,11 +165,11 @@ Releases are published to Maven Central automatically via GitHub Actions when a 
 3. The deployment workflow sets the version from the tag (stripping the `v` prefix), signs the artifacts with GPG, and publishes to Maven Central
 4. After the release, bump the version on `main` for the next development cycle:
    ```bash
-   mvn versions:set -DnewVersion=1.1.0-SNAPSHOT -DgenerateBackupPoms=false
-   git add pom.xml */pom.xml
-   git commit -m "Bump version to 1.0.1-SNAPSHOT"
+   mvn versions:set -DnextSnapshot=true -DgenerateBackupPoms=false
+   git commit -am "Bump version to next SNAPSHOT"
    git push
    ```
+   This automatically increments the patch version and appends `-SNAPSHOT` (e.g., `1.0.0-SNAPSHOT` becomes `1.0.1-SNAPSHOT`).
 
 The deployment workflow requires these GitHub secrets:
 
