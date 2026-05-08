@@ -1,4 +1,4 @@
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.mirkoalicastro/test-impact-maven-plugin.svg)](https://central.sonatype.com/artifact/io.github.mirkoalicastro/test-impact-maven-plugin/versions)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.mirkoalicastro/test-impact-maven-plugin.svg)](https://central.sonatype.com/artifact/io.github.mirkoalicastro/test-impact-maven-plugin)
 
 ![Selective Test Runner](docs/images/logo.png)
 
