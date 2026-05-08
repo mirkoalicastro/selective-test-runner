@@ -1,3 +1,5 @@
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.mirkoalicastro/test-impact-maven-plugin.svg)](https://central.sonatype.com/artifact/io.github.mirkoalicastro/test-impact-maven-plugin/versions)
+
 ![Selective Test Runner](docs/images/logo.png)
 
 A Maven plugin that tracks which production classes each test touches at the bytecode level, then uses Git to detect what changed and runs only the affected tests. No annotations, no config changes to your tests.
