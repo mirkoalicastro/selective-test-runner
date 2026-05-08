@@ -142,7 +142,7 @@ mvn test-impact:invalidate
 ## Building from source
 
 ```bash
-git clone https://github.com/mirkoalicastro/test-impact-maven-plugin.git
+git clone git@github.com:mirkoalicastro/selective-test-runner.git
 cd test-impact-maven-plugin
 mvn clean verify
 ```
