@@ -16,6 +16,7 @@
 
     <name>Selective Test Runner :: Core</name>
     <description>Core library for bytecode-level test impact analysis.</description>
+    <url>https://github.com/mirkoalicastro/selective-test-runner</url>
 
     <dependencies>
         <dependency>

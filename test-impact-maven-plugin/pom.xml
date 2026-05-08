@@ -16,6 +16,7 @@
 
     <name>Selective Test Runner :: Maven Plugin</name>
     <description>Maven plugin for selective test execution based on bytecode-level impact analysis.</description>
+    <url>https://github.com/mirkoalicastro/selective-test-runner</url>
 
     <dependencies>
         <dependency>
