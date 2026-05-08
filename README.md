@@ -20,7 +20,7 @@ Add the plugin to your `pom.xml`:
 <plugin>
   <groupId>io.github.mirkoalicastro</groupId>
   <artifactId>test-impact-maven-plugin</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0</version>
   <executions>
     <execution>
       <goals>
