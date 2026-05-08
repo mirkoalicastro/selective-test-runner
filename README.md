@@ -152,6 +152,34 @@ This produces three artifacts:
 - `selective-test-runner-core-1.0.0-SNAPSHOT-agent.jar`: the shaded agent JAR (ASM relocated)
 - `test-impact-maven-plugin-1.0.0-SNAPSHOT.jar`: the Maven plugin
 
+## Releasing
+
+Releases are published to Maven Central automatically via GitHub Actions when a version tag is pushed.
+
+1. Make sure all changes are merged to `main` and the build is green
+2. Tag the release:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+3. The deployment workflow sets the version from the tag (stripping the `v` prefix), signs the artifacts with GPG, and publishes to Maven Central
+4. After the release, bump the version on `main` for the next development cycle:
+   ```bash
+   mvn versions:set -DnewVersion=1.1.0-SNAPSHOT -DgenerateBackupPoms=false
+   git add pom.xml */pom.xml
+   git commit -m "Bump version to 1.0.1-SNAPSHOT"
+   git push
+   ```
+
+The deployment workflow requires these GitHub secrets:
+
+| Secret | Description |
+|--------|-------------|
+| `MAVEN_CENTRAL_USERNAME` | Central Portal token username |
+| `MAVEN_CENTRAL_PASSWORD` | Central Portal token password |
+| `GPG_PRIVATE_KEY` | Armored GPG private key (`gpg --armor --export-secret-keys <keyid>`) |
+| `GPG_PASSPHRASE` | Passphrase for the GPG key |
+
 ## Contributing
 
 1. Fork the repository and create a feature branch from `main`
