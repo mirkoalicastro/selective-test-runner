@@ -2,11 +2,11 @@
 
 ![Selective Test Runner](docs/images/logo.png)
 
-A Maven plugin that tracks which production classes each test touches at the bytecode level, then uses Git to detect what changed and runs only the affected tests. No annotations, no config changes to your tests.
+A Maven and Gradle plugin that tracks which production classes each test touches at the bytecode level, then uses Git to detect what changed and runs only the affected tests. No annotations, no config changes to your tests.
 
 ## Why?
 
-Large Maven projects spend a lot of time re-running tests when only a few source files changed. This plugin addresses that:
+Large Maven and Gradle projects spend a lot of time re-running tests when only a few source files changed. This plugin addresses that:
 
 - Instruments every method entry via a Java agent, catching dependencies that static analysis misses (reflection, polymorphism, lambdas)
 - Diffs your working tree against the last commit, last tag, or last full run to find changed files
@@ -15,6 +15,8 @@ Large Maven projects spend a lot of time re-running tests when only a few source
 - Supports multi-module reactors with shared coverage maps and concurrent writes under `mvn -T`
 
 ## Quick start
+
+### Maven
 
 Add the plugin to your `pom.xml`:
 
@@ -43,6 +45,24 @@ mvn verify
 
 On the first run all tests execute and coverage is recorded. On subsequent runs only tests affected by your changes are selected.
 
+### Gradle
+
+Add the plugin to your `build.gradle`:
+
+```groovy
+plugins {
+    id 'io.github.mirkoalicastro.test-impact' version '1.0.0'
+}
+```
+
+Then run:
+
+```bash
+gradle test
+```
+
+The first run executes all tests and records coverage. Subsequent runs select only affected tests.
+
 ## How it works
 
 1. **Collect** (`process-test-classes`): attaches a Java agent to Surefire's forked JVM. The agent instruments method entries in your production and test classes using ASM.
@@ -50,6 +70,8 @@ On the first run all tests execute and coverage is recorded. On subsequent runs 
 3. **Report** (`verify`): merges the per-module coverage dump into the shared coverage map (JSON) and prints a summary.
 
 ## Configuration
+
+### Maven
 
 ```xml
 <configuration>
@@ -80,6 +102,20 @@ On the first run all tests execute and coverage is recorded. On subsequent runs 
 | `failOnEmptySelection` | `false` | If `true`, fail the build when no tests match the changed classes instead of falling back to a full run. |
 | `coverageMapPath` | `<reactor-root>/target/.test-impact/coverage.json` | Override the coverage map location. |
 
+### Gradle
+
+```groovy
+testImpact {
+    baseline = 'lastCommit'
+    fullRunInterval = 50
+    includes = 'com.mycompany.myapp'
+    excludes = 'com.mycompany.myapp.generated'
+    failOnEmptySelection = false
+}
+```
+
+The same parameters are available in the Gradle DSL. Package prefixes are auto-detected from compiled output when `includes` is omitted.
+
 ## Baseline strategies
 
 | Strategy | Use case | How it works |
@@ -88,7 +124,9 @@ On the first run all tests execute and coverage is recorded. On subsequent runs 
 | `lastTag` | Release pipelines | Diffs HEAD against the most recent Git tag by timestamp. |
 | `lastFullRun` | Local development | Diffs the working tree against the commit hash recorded in the coverage map from the last full test run. |
 
-## Multi-module reactors
+## Multi-module / multi-project builds
+
+### Maven
 
 The plugin supports multi-module Maven projects, including parallel builds (`mvn -T`):
 
@@ -96,6 +134,15 @@ The plugin supports multi-module Maven projects, including parallel builds (`mvn
 - Each module's Surefire JVM writes its own binary dump
 - `report` uses a JVM monitor + OS-level `FileLock` for concurrent writes
 - `select` uses `MavenSession.getProjectDependencyGraph()` to only consider changes in upstream modules
+
+### Gradle
+
+The plugin supports multi-project Gradle builds:
+
+- Shared coverage map at the root project (`build/.test-impact/coverage.json`)
+- Each project's test JVM writes its own binary dump
+- `testImpactReport` uses a JVM monitor + OS-level `FileLock` for concurrent writes
+- Test selection walks project dependencies transitively to only consider changes in upstream projects
 
 ## Fallback behaviour
 
@@ -120,7 +167,9 @@ The agent detects test methods by annotation:
 | JUnit 4 | `@Test` |
 | TestNG | `@Test` |
 
-## Goals
+## Goals / Tasks
+
+### Maven goals
 
 | Goal | Phase | Description |
 |------|-------|-------------|
@@ -135,10 +184,24 @@ To reset the coverage map and force a full rebuild:
 mvn test-impact:invalidate
 ```
 
+### Gradle tasks
+
+| Task | When it runs | Description |
+|------|-------------|-------------|
+| *(automatic)* | Before `test` (`doFirst`) | Attaches the Java agent and selects impacted tests |
+| `testImpactReport` | After `test` (`finalizedBy`) | Merges coverage dump into the shared map and generates a report |
+| `testImpactInvalidate` | *(manual)* | Clears the coverage map and all per-project state |
+
+To reset the coverage map:
+
+```bash
+gradle testImpactInvalidate
+```
+
 ## Requirements
 
 - Java 11+
-- Maven 3.9+
+- Maven 3.9+ or Gradle 7.0+
 - Git repository
 
 ## Building from source
@@ -149,10 +212,11 @@ cd test-impact-maven-plugin
 mvn clean verify
 ```
 
-This produces three artifacts:
+This produces four artifacts:
 - `selective-test-runner-core-1.0.0-SNAPSHOT.jar`: the core library (agent, change detection, impact resolution, coverage persistence)
 - `selective-test-runner-core-1.0.0-SNAPSHOT-agent.jar`: the shaded agent JAR (ASM relocated)
 - `test-impact-maven-plugin-1.0.0-SNAPSHOT.jar`: the Maven plugin
+- `test-impact-gradle-plugin-1.0.0-SNAPSHOT.jar`: the Gradle plugin
 
 ## Releasing
 
@@ -204,6 +268,9 @@ selective-test-runner-core/
 test-impact-maven-plugin/
   mojo/           Maven goals (collect, select, report, invalidate)
   common/         Maven-specific utilities
+
+test-impact-gradle-plugin/
+  gradle/         Plugin entry point, extension, tasks, multi-project scope
 ```
 
 ## License

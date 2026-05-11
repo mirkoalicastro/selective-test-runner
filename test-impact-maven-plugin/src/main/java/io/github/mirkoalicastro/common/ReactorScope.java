@@ -7,7 +7,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import org.apache.maven.execution.MavenSession;
@@ -70,23 +69,20 @@ public final class ReactorScope {
    * Pure helper: walks {@code index} (descending-length-ordered) and returns the value whose key is
    * the longest prefix of {@code path}. An empty-string key is treated as a wildcard fallback.
    * Public so the prefix logic is unit-testable without Maven.
+   *
+   * @see PrefixIndex#longestPrefixMatch(TreeMap, String)
    */
   public static <T> T longestPrefixMatch(TreeMap<String, T> index, String path) {
-    if (path == null || index == null || index.isEmpty()) return null;
-    for (Map.Entry<String, T> e : index.entrySet()) {
-      String prefix = e.getKey();
-      if (prefix.isEmpty()) return e.getValue();
-      if (path.startsWith(prefix + "/")) return e.getValue();
-    }
-    return null;
+    return PrefixIndex.longestPrefixMatch(index, path);
   }
 
-  /** Comparator for the longest-prefix-first index — exposed for tests. */
+  /**
+   * Comparator for the longest-prefix-first index — exposed for tests.
+   *
+   * @see PrefixIndex#descendingByLength()
+   */
   public static java.util.Comparator<String> descendingByLength() {
-    return (a, b) -> {
-      int byLength = Integer.compare(b.length(), a.length());
-      return byLength != 0 ? byLength : a.compareTo(b);
-    };
+    return PrefixIndex.descendingByLength();
   }
 
   /**

@@ -37,6 +37,7 @@
     <modules>
         <module>selective-test-runner-core</module>
         <module>test-impact-maven-plugin</module>
+        <module>test-impact-gradle-plugin</module>
     </modules>
 
     <properties>
@@ -58,6 +59,7 @@
         <spotless-maven-plugin.version>3.4.0</spotless-maven-plugin.version>
         <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
         <central-publishing-maven-plugin.version>0.10.0</central-publishing-maven-plugin.version>
+        <gradle.api.version>8.11.1</gradle.api.version>
     </properties>
 
     <dependencyManagement>
@@ -117,6 +119,12 @@
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter</artifactId>
                 <version>${junit.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.gradleplugins</groupId>
+                <artifactId>gradle-api</artifactId>
+                <version>${gradle.api.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
