@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.StringTokenizer;
 import java.util.TreeSet;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.AbstractMojo;
@@ -69,6 +70,10 @@ public class SelectMojo extends AbstractMojo {
   @Parameter(property = "testimpact.skipOnCacheMiss", defaultValue = "false")
   private boolean skipOnCacheMiss;
 
+  /** Test-Classes to run always (comma-separated, with package). */
+  @Parameter(property = "testimpact.testClassesToRunAlways", defaultValue = "")
+  private String testClassesToRunAlways;
+
   @Override
   public void execute() throws MojoExecutionException {
     long start = System.currentTimeMillis();
@@ -110,6 +115,10 @@ public class SelectMojo extends AbstractMojo {
     Selection sel = resolver.resolve(map, changedClasses, buildsSinceFull);
 
     if (sel.mode() == Selection.Mode.SELECTED) {
+      StringTokenizer tokenizer = new StringTokenizer(testClassesToRunAlways, ",");
+      while (tokenizer.hasMoreTokens()) {
+        sel.selectedTestIds().add(tokenizer.nextToken());
+      }
       Set<String> moduleClasses = filterToCurrentModule(sel, scope);
       if (moduleClasses.isEmpty()) {
         // Nothing to run in this module — set surefire's test filter to a non-matching pattern
