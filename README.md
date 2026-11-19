@@ -79,6 +79,7 @@ On the first run all tests execute and coverage is recorded. On subsequent runs 
 | `excludes` | *(empty)* | Comma-separated package prefixes to exclude from instrumentation. |
 | `failOnEmptySelection` | `false` | If `true`, fail the build when no tests match the changed classes instead of falling back to a full run. |
 | `coverageMapPath` | `<reactor-root>/target/.test-impact/coverage.json` | Override the coverage map location. |
+| `testClassesToRunAlways` | *(empty)* | Test-Classes to run always (comma-separated, with package). |
 
 ## Baseline strategies
 
