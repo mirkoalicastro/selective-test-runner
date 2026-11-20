@@ -38,6 +38,7 @@ class SelectMojoTest {
   @Mock private MavenSession session;
   @Mock private Log log;
   private Path repoDir;
+  private Path srcDir;
   private Path testClassesDir;
   private String buildDir;
   private Properties projectProperties;
@@ -54,10 +55,10 @@ class SelectMojoTest {
 
   private void createDirectories() throws IOException {
     repoDir = Files.createDirectory(tempDir.resolve("repo"));
+    srcDir = Files.createDirectories(repoDir.resolve("src/main/java"));
     Path targetDir = Files.createDirectory(repoDir.resolve("target"));
     buildDir = targetDir.toString();
     testClassesDir = Files.createDirectory(targetDir.resolve("test-classes"));
-    Files.createDirectory(repoDir.resolve("src"));
   }
 
   private void initProject() {
@@ -112,11 +113,11 @@ class SelectMojoTest {
   @Test
   void execute_setsProperties() throws Exception {
     writeCoverageMap(buildCoverageMapJson());
-    setField(mojo, "testClassesToRunAlways", "RunAlwaysTest");
-    addJavaFile(repoDir);
-    addTestClasses(testClassesDir);
+    setField(mojo, "testClassesToRunAlways", "com.demo.RunAlwaysTest");
+    addJavaFile();
+    addTestClasses();
     mojo.execute();
-    validateProperties("MainTest,RunAlwaysTest");
+    validateProperties("com.demo.RunAlwaysTest,com.demo.MainTest");
     verify(log, atLeastOnce()).info("test-impact: selected 2 tests across 2 classes (this module)");
     validateSelectionRecord();
   }
@@ -124,8 +125,8 @@ class SelectMojoTest {
   @Test
   void execute_setsNoMatchPatternWhenSelectedModeHasNoImpactedTestsInModule() throws Exception {
     writeCoverageMap(buildCoverageMapJson());
-    setField(mojo, "testClassesToRunAlways", "RunAlwaysTest");
-    addJavaFile(repoDir);
+    setField(mojo, "testClassesToRunAlways", "com.demo.RunAlwaysTest");
+    addJavaFile();
     mojo.execute();
     validateProperties("io.github.mirkoalicastro.NoTestMatches#nothing");
     verify(log, atLeastOnce()).info("test-impact: no impacted tests in this module");
@@ -135,8 +136,8 @@ class SelectMojoTest {
   @Test
   void execute_fallsBackToFullRunAndLogsWarningWhenCoverageMapCorrupt() throws Exception {
     writeCoverageMap("{ invalid json");
-    addJavaFile(repoDir);
-    addTestClasses(testClassesDir);
+    addJavaFile();
+    addTestClasses();
     mojo.execute();
     validateProperties(null);
     verify(log, atLeastOnce()).warn(org.mockito.ArgumentMatchers.contains("failed to load coverage map"));
@@ -144,7 +145,7 @@ class SelectMojoTest {
     assertEquals("FULL_RUN", record.get("mode").asText());
     assertEquals("coverage map absent", record.get("reason").asText());
     assertEquals("LAST_COMMIT", record.get("baseline").asText());
-    assertEquals("[ \"Main\" ]", record.get("changedClasses").toPrettyString());
+    assertEquals("[ \"com/demo/Main\" ]", record.get("changedClasses").toPrettyString());
     assertEquals("[ ]", record.get("selectedTests").toPrettyString());
     assertEquals(0, record.get("mapEntries").asInt());
     assertEquals("", record.get("mapBuildHash").asText());
@@ -154,7 +155,7 @@ class SelectMojoTest {
 
   private String buildCoverageMapJson() throws Exception {
     String headHash = gitRevParseHead(repoDir);
-    return "{\"buildHash\":\"" + headHash + "\",\"entries\": {\"MainTest#test\": [\"Main\"]}}";
+    return "{\"buildHash\":\"" + headHash + "\",\"entries\": {\"com.demo.MainTest#test\": [\"com/demo/Main\"]}}";
   }
 
   private void writeCoverageMap(String coverageJson) throws IOException {
@@ -176,8 +177,8 @@ class SelectMojoTest {
     assertEquals("SELECTED", record.get("mode").asText());
     assertEquals("null", record.get("reason").asText());
     assertEquals("LAST_COMMIT", record.get("baseline").asText());
-    assertEquals("[ \"Main\" ]", record.get("changedClasses").toPrettyString());
-    assertEquals("[ \"MainTest#test\", \"RunAlwaysTest\" ]", record.get("selectedTests").toPrettyString());
+    assertEquals("[ \"com/demo/Main\" ]", record.get("changedClasses").toPrettyString());
+    assertEquals("[ \"com.demo.MainTest#test\", \"com.demo.RunAlwaysTest\" ]", record.get("selectedTests").toPrettyString());
     assertEquals(1, record.get("mapEntries").asInt());
     assertEquals(gitRevParseHead(repoDir), record.get("mapBuildHash").asText());
     assertTrue(record.has("startedMillis"));
@@ -200,14 +201,15 @@ class SelectMojoTest {
     }
   }
 
-  private void addJavaFile(Path repoDir) throws Exception {
-    Files.writeString(repoDir.resolve("Main.java"), "init\n", StandardCharsets.UTF_8);
-    runCommand(repoDir, "git", "add", ".");
+  private void addJavaFile() throws Exception {
+    Path packageDir = Files.createDirectories(srcDir.resolve("com/demo"));
+    Files.writeString(packageDir.resolve("Main.java"), "init\n", StandardCharsets.UTF_8);
   }
 
-  private void addTestClasses(Path testClassesDir) throws Exception {
-    Files.writeString(testClassesDir.resolve("MainTest.class"), "init\n", StandardCharsets.UTF_8);
-    Files.writeString(testClassesDir.resolve("RunAlwaysTest.class"), "init\n", StandardCharsets.UTF_8);
+  private void addTestClasses() throws Exception {
+    Path packageDir = Files.createDirectories(testClassesDir.resolve("com/demo"));
+    Files.writeString(packageDir.resolve("MainTest.class"), "init\n", StandardCharsets.UTF_8);
+    Files.writeString(packageDir.resolve("RunAlwaysTest.class"), "init\n", StandardCharsets.UTF_8);
   }
 
   private String gitRevParseHead(Path dir) throws Exception {
