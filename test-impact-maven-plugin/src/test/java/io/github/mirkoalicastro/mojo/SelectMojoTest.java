@@ -38,7 +38,8 @@ class SelectMojoTest {
   @Mock private MavenSession session;
   @Mock private Log log;
   private Path repoDir;
-  private Path srcDir;
+  private Path srcPackageDir;
+  private Path testPackageDir;
   private Path testClassesDir;
   private String buildDir;
   private Properties projectProperties;
@@ -49,13 +50,15 @@ class SelectMojoTest {
   void setUp() throws Exception {
     createDirectories();
     initProject();
-    initGitRepo(repoDir);
+    initGitRepo();
+    addFilesToGit();
     initSelectMojo();
   }
 
   private void createDirectories() throws IOException {
     repoDir = Files.createDirectory(tempDir.resolve("repo"));
-    srcDir = Files.createDirectories(repoDir.resolve("src/main/java"));
+    srcPackageDir = Files.createDirectories(repoDir.resolve("src/main/java/com/demo"));
+    testPackageDir = Files.createDirectories(repoDir.resolve("src/test/java/com/demo"));
     Path targetDir = Files.createDirectory(repoDir.resolve("target"));
     buildDir = targetDir.toString();
     testClassesDir = Files.createDirectory(targetDir.resolve("test-classes"));
@@ -75,13 +78,19 @@ class SelectMojoTest {
     when(session.getTopLevelProject()).thenReturn(project);
   }
 
-  private void initGitRepo(Path dir) throws Exception {
-    runCommand(dir, "git", "init");
-    runCommand(dir, "git", "config", "user.email", "test@example.com");
-    runCommand(dir, "git", "config", "user.name", "Test User");
-    Files.writeString(dir.resolve("README.md"), "init\n", StandardCharsets.UTF_8);
-    runCommand(dir, "git", "add", ".");
-    runCommand(dir, "git", "commit", "-m", "initial commit");
+  private void initGitRepo() throws Exception {
+    runCommand(repoDir, "git", "init");
+    runCommand(repoDir, "git", "config", "user.email", "test@example.com");
+    runCommand(repoDir, "git", "config", "user.name", "Test User");
+  }
+
+  private void addFilesToGit() throws Exception {
+    Files.writeString(repoDir.resolve("README.md"), "init\n", StandardCharsets.UTF_8);
+    runCommand(repoDir, "git", "add", ".");
+    Files.writeString(testPackageDir.resolve("MainTest.java"), "init\n", StandardCharsets.UTF_8);
+    Files.writeString(testPackageDir.resolve("RunAlwaysTest.java"), "init\n", StandardCharsets.UTF_8);
+    runCommand(repoDir, "git", "add", ".");
+    runCommand(repoDir, "git", "commit", "-m", "initial commit");
   }
 
   private void initSelectMojo() {
@@ -117,9 +126,9 @@ class SelectMojoTest {
     addJavaFile();
     addTestClasses();
     mojo.execute();
-    validateProperties("com.demo.RunAlwaysTest,com.demo.MainTest");
-    verify(log, atLeastOnce()).info("test-impact: selected 2 tests across 2 classes (this module)");
-    validateSelectionRecord();
+    validateProperties("com.demo.RunAlwaysTest,com.demo.MainTest,com.demo.NewMainTest");
+    verify(log, atLeastOnce()).info("test-impact: selected 3 tests across 3 classes (this module)");
+    validateSelectionRecord("[ \"com.demo.MainTest#test\", \"com.demo.NewMainTest\", \"com.demo.RunAlwaysTest\" ]");
   }
 
   @Test
@@ -130,7 +139,7 @@ class SelectMojoTest {
     mojo.execute();
     validateProperties("io.github.mirkoalicastro.NoTestMatches#nothing");
     verify(log, atLeastOnce()).info("test-impact: no impacted tests in this module");
-    validateSelectionRecord();
+    validateSelectionRecord("[ \"com.demo.MainTest#test\", \"com.demo.RunAlwaysTest\" ]");
   }
 
   @Test
@@ -145,7 +154,7 @@ class SelectMojoTest {
     assertEquals("FULL_RUN", record.get("mode").asText());
     assertEquals("coverage map absent", record.get("reason").asText());
     assertEquals("LAST_COMMIT", record.get("baseline").asText());
-    assertEquals("[ \"com/demo/Main\" ]", record.get("changedClasses").toPrettyString());
+    assertEquals("[ \"com/demo/Main\", \"com/demo/NewMainTest\" ]", record.get("changedClasses").toPrettyString());
     assertEquals("[ ]", record.get("selectedTests").toPrettyString());
     assertEquals(0, record.get("mapEntries").asInt());
     assertEquals("", record.get("mapBuildHash").asText());
@@ -172,13 +181,13 @@ class SelectMojoTest {
     assertEquals(expected, userProperties.getProperty("surefire.test"));
   }
 
-  private void validateSelectionRecord() throws Exception {
+  private void validateSelectionRecord(String expectedSelectedTests) throws Exception {
     JsonNode record = readSelectionRecord();
     assertEquals("SELECTED", record.get("mode").asText());
     assertEquals("null", record.get("reason").asText());
     assertEquals("LAST_COMMIT", record.get("baseline").asText());
-    assertEquals("[ \"com/demo/Main\" ]", record.get("changedClasses").toPrettyString());
-    assertEquals("[ \"com.demo.MainTest#test\", \"com.demo.RunAlwaysTest\" ]", record.get("selectedTests").toPrettyString());
+    assertEquals("[ \"com/demo/Main\", \"com/demo/NewMainTest\" ]", record.get("changedClasses").toPrettyString());
+    assertEquals(expectedSelectedTests, record.get("selectedTests").toPrettyString());
     assertEquals(1, record.get("mapEntries").asInt());
     assertEquals(gitRevParseHead(repoDir), record.get("mapBuildHash").asText());
     assertTrue(record.has("startedMillis"));
@@ -202,14 +211,15 @@ class SelectMojoTest {
   }
 
   private void addJavaFile() throws Exception {
-    Path packageDir = Files.createDirectories(srcDir.resolve("com/demo"));
-    Files.writeString(packageDir.resolve("Main.java"), "init\n", StandardCharsets.UTF_8);
+    Files.writeString(srcPackageDir.resolve("Main.java"), "init\n", StandardCharsets.UTF_8);
+    Files.writeString(testPackageDir.resolve("NewMainTest.java"), "init\n", StandardCharsets.UTF_8);
   }
 
   private void addTestClasses() throws Exception {
-    Path packageDir = Files.createDirectories(testClassesDir.resolve("com/demo"));
-    Files.writeString(packageDir.resolve("MainTest.class"), "init\n", StandardCharsets.UTF_8);
-    Files.writeString(packageDir.resolve("RunAlwaysTest.class"), "init\n", StandardCharsets.UTF_8);
+    Path testClassesPackageDir = Files.createDirectories(testClassesDir.resolve("com/demo"));
+    Files.writeString(testClassesPackageDir.resolve("MainTest.class"), "init\n", StandardCharsets.UTF_8);
+    Files.writeString(testClassesPackageDir.resolve("NewMainTest.class"), "init\n", StandardCharsets.UTF_8);
+    Files.writeString(testClassesPackageDir.resolve("RunAlwaysTest.class"), "init\n", StandardCharsets.UTF_8);
   }
 
   private String gitRevParseHead(Path dir) throws Exception {

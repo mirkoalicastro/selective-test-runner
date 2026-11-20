@@ -119,6 +119,13 @@ public class SelectMojo extends AbstractMojo {
       while (tokenizer.hasMoreTokens()) {
         sel.selectedTestIds().add(tokenizer.nextToken());
       }
+      for (String changedClass : changedClasses) {
+        // Add changed test-classes
+        String changedClassWithDots = changedClass.replace('/', '.');
+        if (scope.isTestInCurrentModule(changedClassWithDots)) {
+          sel.selectedTestIds().add(changedClassWithDots);
+        }
+      }
       Set<String> moduleClasses = filterToCurrentModule(sel, scope);
       if (moduleClasses.isEmpty()) {
         // Nothing to run in this module — set surefire's test filter to a non-matching pattern
